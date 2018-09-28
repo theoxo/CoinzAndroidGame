@@ -1,18 +1,38 @@
 package com.coinzgame.theoxo.coinz
 
+import android.location.Location
 import android.os.Bundle
 import android.support.design.widget.Snackbar
 import android.support.v7.app.AppCompatActivity
 import android.view.Menu
 import android.view.MenuItem
+import com.mapbox.android.core.location.LocationEngine
+import com.mapbox.android.core.location.LocationEngineListener
+import com.mapbox.android.core.location.LocationEnginePriority
+import com.mapbox.android.core.location.LocationEngineProvider
+import com.mapbox.android.core.permissions.PermissionsListener
+import com.mapbox.android.core.permissions.PermissionsManager
 import com.mapbox.mapboxsdk.Mapbox
+import com.mapbox.mapboxsdk.camera.CameraUpdateFactory
+import com.mapbox.mapboxsdk.geometry.LatLng
 import com.mapbox.mapboxsdk.maps.MapView
+import com.mapbox.mapboxsdk.maps.MapboxMap
+import com.mapbox.mapboxsdk.plugins.locationlayer.LocationLayerPlugin
+import com.mapbox.mapboxsdk.plugins.locationlayer.modes.CameraMode
+import com.mapbox.mapboxsdk.plugins.locationlayer.modes.RenderMode
 
 import kotlinx.android.synthetic.main.activity_main.*
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineListener {
 
     private lateinit var mapView : MapView
+    private lateinit var mapboxMap : MapboxMap
+    private lateinit var permissionsManager : PermissionsManager
+    private lateinit var originLocation : Location
+
+    private var locationEngine : LocationEngine? = null
+    private var locationLayerPlugin : LocationLayerPlugin? = null
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,6 +48,82 @@ class MainActivity : AppCompatActivity() {
 
         mapView = findViewById(R.id.mapView)
         mapView.onCreate(savedInstanceState)
+        mapView.getMapAsync { mapboxMap ->
+            this.mapboxMap = mapboxMap
+            enableLocation()
+        }
+    }
+
+    private fun enableLocation() {
+        if (PermissionsManager.areLocationPermissionsGranted(this)) {
+            initializeLocationEngine()
+            initializeLocationLayer()
+        } else {
+            permissionsManager = PermissionsManager(this)
+            permissionsManager.requestLocationPermissions(this)
+        }
+    }
+
+    @SuppressWarnings("MissingPermission")
+    private fun initializeLocationEngine() {
+        locationEngine = LocationEngineProvider(this).obtainBestLocationEngineAvailable()
+        locationEngine?.priority = LocationEnginePriority.HIGH_ACCURACY
+        locationEngine?.activate()
+
+        val lastLocation = locationEngine?.lastLocation
+        if (lastLocation != null) {
+            originLocation = lastLocation
+            setCameraPosition(lastLocation)
+        } else {
+            locationEngine?.addLocationEngineListener(this)
+        }
+    }
+
+    private fun initializeLocationLayer() {
+        locationLayerPlugin = LocationLayerPlugin(mapView, mapboxMap, locationEngine)
+        locationLayerPlugin?.cameraMode = CameraMode.TRACKING
+        locationLayerPlugin?.renderMode = RenderMode.NORMAL
+        locationLayerPlugin?.isLocationLayerEnabled = true
+    }
+
+    private fun setCameraPosition(location : Location) {
+        mapboxMap.animateCamera(CameraUpdateFactory.newLatLngZoom(
+                LatLng(location.latitude, location.longitude), 15.0))
+    }
+
+    override fun onExplanationNeeded(permissionsToExplain: MutableList<String>?) {
+        // TODO present dialog stating why this is needed
+    }
+
+    override fun onPermissionResult(granted: Boolean) {
+        if (granted) {
+            enableLocation()
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        permissionsManager.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    }
+
+    override fun onLocationChanged(location: Location?) {
+        /*if (location == null) {
+            error("This aint workin")
+        } else {
+            location.let {
+                originLocation = location
+                setCameraPosition(location)
+            }
+        }*/
+
+        if (location != null) {
+            mapboxMap.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(location), 15.0))
+            locationLayerPlugin?.locationEngine?.removeLocationEngineListener(this)
+        }
+    }
+
+    @SuppressWarnings("MissingPermission")
+    override fun onConnected() {
+        locationEngine?.requestLocationUpdates()
     }
 
     override fun onStart() {
