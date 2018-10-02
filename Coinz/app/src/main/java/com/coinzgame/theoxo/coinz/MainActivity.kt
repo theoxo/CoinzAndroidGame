@@ -37,12 +37,6 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        setSupportActionBar(toolbar)
-
-        fab.setOnClickListener { view ->
-            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                    .setAction("Action", null).show()
-        }
 
         Mapbox.getInstance(this, "***REMOVED***")
 
@@ -82,8 +76,11 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     private fun initializeLocationLayer() {
         locationLayerPlugin = LocationLayerPlugin(mapView, mapboxMap, locationEngine)
         locationLayerPlugin?.cameraMode = CameraMode.TRACKING
-        locationLayerPlugin?.renderMode = RenderMode.NORMAL
+        locationLayerPlugin?.renderMode = RenderMode.COMPASS
+
+        // I am not sure which of the below two to use
         locationLayerPlugin?.isLocationLayerEnabled = true
+        //lifecycle.addObserver(locationLayerPlugin!!)
     }
 
     private fun setCameraPosition(location : Location) {
@@ -92,12 +89,14 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     override fun onExplanationNeeded(permissionsToExplain: MutableList<String>?) {
-        // TODO present dialog stating why this is needed
+        // TODO present dialog stating why permissions are needed
     }
 
     override fun onPermissionResult(granted: Boolean) {
         if (granted) {
             enableLocation()
+        }else {
+            print(("Permissions not granted"))
         }
     }
 
@@ -116,7 +115,10 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         }*/
 
         if (location != null) {
-            mapboxMap.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(location), 15.0))
+            originLocation = location
+            setCameraPosition(location)
+
+            // Some demos include the below line, some don't
             locationLayerPlugin?.locationEngine?.removeLocationEngineListener(this)
         }
     }
