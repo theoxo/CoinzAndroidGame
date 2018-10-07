@@ -4,6 +4,7 @@ import android.location.Location
 import android.os.Bundle
 import android.support.design.widget.Snackbar
 import android.support.v7.app.AppCompatActivity
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import com.mapbox.android.core.location.LocationEngine
@@ -17,22 +18,25 @@ import com.mapbox.mapboxsdk.camera.CameraUpdateFactory
 import com.mapbox.mapboxsdk.geometry.LatLng
 import com.mapbox.mapboxsdk.maps.MapView
 import com.mapbox.mapboxsdk.maps.MapboxMap
+import com.mapbox.mapboxsdk.maps.OnMapReadyCallback
 import com.mapbox.mapboxsdk.plugins.locationlayer.LocationLayerPlugin
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.CameraMode
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.RenderMode
 
 import kotlinx.android.synthetic.main.activity_main.*
 
-class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineListener {
+class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineListener,
+        OnMapReadyCallback {
 
-    private lateinit var mapView : MapView
-    private lateinit var mapboxMap : MapboxMap
     private lateinit var permissionsManager : PermissionsManager
     private lateinit var originLocation : Location
+    private lateinit var locationEngine : LocationEngine
+    private lateinit var locationLayerPlugin: LocationLayerPlugin
 
-    private var locationEngine : LocationEngine? = null
-    private var locationLayerPlugin : LocationLayerPlugin? = null
+    private var mapView : MapView? = null
+    private var mapboxMap : MapboxMap? = null
 
+    private val TAG = "MainActivity"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,18 +45,28 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         Mapbox.getInstance(this, "***REMOVED***")
 
         mapView = findViewById(R.id.mapView)
-        mapView.onCreate(savedInstanceState)
-        mapView.getMapAsync { mapboxMap ->
+        mapView?.onCreate(savedInstanceState)
+        mapView?.getMapAsync(this)
+    }
+
+    override fun onMapReady(mapboxMap: MapboxMap?) {
+        if (mapboxMap == null) {
+            Log.d(TAG, "[onMapReady] mapboxMap is null")
+        } else {
             this.mapboxMap = mapboxMap
+            this.mapboxMap?.uiSettings?.isCompassEnabled = true
+            this.mapboxMap?.uiSettings?.isZoomControlsEnabled = true
+
             enableLocation()
         }
     }
-
     private fun enableLocation() {
         if (PermissionsManager.areLocationPermissionsGranted(this)) {
+            Log.d(TAG, "[enableLocation] Permissions granted")
             initializeLocationEngine()
             initializeLocationLayer()
         } else {
+            Log.d(TAG, "[enableLocation] Permissions not granted")
             permissionsManager = PermissionsManager(this)
             permissionsManager.requestLocationPermissions(this)
         }
@@ -61,30 +75,40 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     @SuppressWarnings("MissingPermission")
     private fun initializeLocationEngine() {
         locationEngine = LocationEngineProvider(this).obtainBestLocationEngineAvailable()
-        locationEngine?.priority = LocationEnginePriority.HIGH_ACCURACY
-        locationEngine?.activate()
+        locationEngine.apply {
+            interval = 5000
+            fastestInterval = 1000
+            priority = LocationEnginePriority.HIGH_ACCURACY
+            activate()
+        }
 
-        val lastLocation = locationEngine?.lastLocation
+        val lastLocation = locationEngine.lastLocation
         if (lastLocation != null) {
             originLocation = lastLocation
             setCameraPosition(lastLocation)
         } else {
-            locationEngine?.addLocationEngineListener(this)
+            locationEngine.addLocationEngineListener(this)
         }
     }
 
+    @SuppressWarnings("MissingPermission")
     private fun initializeLocationLayer() {
-        locationLayerPlugin = LocationLayerPlugin(mapView, mapboxMap, locationEngine)
-        locationLayerPlugin?.cameraMode = CameraMode.TRACKING
-        locationLayerPlugin?.renderMode = RenderMode.COMPASS
-
-        // I am not sure which of the below two to use
-        locationLayerPlugin?.isLocationLayerEnabled = true
-        //lifecycle.addObserver(locationLayerPlugin!!)
+        if (mapView == null) {
+            Log.d(TAG, "[initializeLocationLayer] mapView is null")
+        } else if (mapboxMap == null) {
+            Log.d(TAG, "[initializeLocationLayer] mapboxMap is null")
+        } else {
+            locationLayerPlugin = LocationLayerPlugin(mapView!!, mapboxMap!!, locationEngine)
+            locationLayerPlugin.apply {
+                setLocationLayerEnabled(true)
+                cameraMode = CameraMode.TRACKING
+                renderMode = RenderMode.NORMAL
+            }
+        }
     }
 
     private fun setCameraPosition(location : Location) {
-        mapboxMap.animateCamera(CameraUpdateFactory.newLatLngZoom(
+        mapboxMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(
                 LatLng(location.latitude, location.longitude), 15.0))
     }
 
@@ -119,43 +143,44 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
             setCameraPosition(location)
 
             // Some demos include the below line, some don't
-            locationLayerPlugin?.locationEngine?.removeLocationEngineListener(this)
+            //locationLayerPlugin?.locationEngine?.removeLocationEngineListener(this)
         }
     }
 
     @SuppressWarnings("MissingPermission")
     override fun onConnected() {
-        locationEngine?.requestLocationUpdates()
+        Log.d(TAG, "[onConnected] Requesting location updates")
+        locationEngine.requestLocationUpdates()
     }
 
     override fun onStart() {
         super.onStart()
-        mapView.onStart()
+        mapView?.onStart()
     }
 
     override fun onResume() {
         super.onResume()
-        mapView.onResume()
+        mapView?.onResume()
     }
 
     override fun onStop() {
         super.onStop()
-        mapView.onStop()
+        mapView?.onStop()
     }
 
     override fun onLowMemory() {
         super.onLowMemory()
-        mapView.onLowMemory()
+        mapView?.onLowMemory()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        mapView.onDestroy()
+        mapView?.onDestroy()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        mapView.onSaveInstanceState(outState)
+        mapView?.onSaveInstanceState(outState)
     }
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         // Inflate the menu; this adds items to the action bar if it is present.
