@@ -45,7 +45,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     private val TAG = "MainActivity"
 
     /**
-     * First set up method called, getting the Mapbox instance and requesting the MapboxMap
+     * First set up method called, getting the [Mapbox] instance and requesting the [MapboxMap].
      *
      * @param[savedInstanceState] the previously saved instance state, if it exists.
      */
@@ -65,7 +65,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      * Listener for the AsyncTask marker map data download having finished.
      * Calls addMarkers to add the markers to the map.
      *
-     * @param[result] the downloaded GeoJSON (as a String) which describes the location of the coins
+     * @param[result] the downloaded GeoJSON (as a [String]) which describes the location of the coins
      */
     override fun downloadComplete(result: String) {
         val sneakpeak = result.take(25)
@@ -74,9 +74,9 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     /**
-     * Adds the markers for the coins to the MapboxMap being displayed.
+     * Adds the markers for the coins to the [MapboxMap] being displayed.
      *
-     * @param[geoJsonString] the downloaded GeoJSON (as a String) which describes the location of the coins
+     * @param[geoJsonString] the downloaded GeoJSON (as a [String]) which describes the location of the coins
      */
     private fun addMarkers(geoJsonString : String) {
 
@@ -101,8 +101,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     /**
-     * Listener function for the async call to receive the MapboxMap. Sets up the local
-     * MapboxMap instance, and then begins to fetch today's coins
+     * Listener function for the async call to receive the [MapboxMap]. Sets up the local
+     * MapboxMap instance, and then begins to fetch today's coins.
      *
      * @param[mapboxMap] the received MapboxMap
      */
@@ -143,8 +143,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
     /**
      * Checks if the necessary location permissions have been granted. If so, invokes the
-     * methods which initialize the LocationEngine and LocationLayerPlugin.
-     * If not, instantiates a PermissionsManager and requests the location permissions.
+     * methods which initialize the [LocationEngine] and [LocationLayerPlugin].
+     * If not, instantiates a [PermissionsManager] and requests the location permissions.
      */
     private fun enableLocation() {
         if (PermissionsManager.areLocationPermissionsGranted(this)) {
@@ -159,7 +159,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     /**
-     * Instantiates and sets up the LocationEngine
+     * Instantiates and sets up the [LocationEngine]
      */
     @SuppressWarnings("MissingPermission")
     private fun initializeLocationEngine() {
@@ -181,7 +181,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     /**
-     * Instantiates and sets up the LocationLayerPlugin
+     * Instantiates and sets up the [LocationLayerPlugin]
      */
     @SuppressWarnings("MissingPermission")
     private fun initializeLocationLayer() {
@@ -200,9 +200,9 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     /**
-     * Updates the current camera position for the displayed MapboxMap
+     * Updates the current camera position for the displayed [MapboxMap]
      *
-     * @param[location] the new Location to focus the camera on
+     * @param[location] the new [Location] to focus the camera on
      */
     private fun setCameraPosition(location : Location) {
         mapboxMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(
@@ -214,7 +214,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     /**
-     * Listener for location listener results. If granted, invokes enableLocation().
+     * Listener for location listener results. If granted, invokes [enableLocation].
      *
      * @param[granted] the truth value of the sentence "the permission was granted"
      */
@@ -231,9 +231,9 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     /**
-     * Listener for the user's location changing, updating the recorded and displayed location
+     * Listener for the user's [Location] changing, updating the recorded and displayed location
      *
-     * @param[location] the new location found, or null
+     * @param[location] the new [Location] found, or null
      */
     override fun onLocationChanged(location: Location?) {
         if (location != null) {
