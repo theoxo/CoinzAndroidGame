@@ -1,11 +1,13 @@
 package com.coinzgame.theoxo.coinz
 
+import android.content.Context
+import android.content.SharedPreferences
 import android.location.Location
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
-import android.view.Menu
-import android.view.MenuItem
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
 import com.mapbox.android.core.location.LocationEngine
 import com.mapbox.android.core.location.LocationEngineListener
 import com.mapbox.android.core.location.LocationEnginePriority
@@ -15,6 +17,7 @@ import com.mapbox.android.core.permissions.PermissionsManager
 import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
 import com.mapbox.mapboxsdk.Mapbox
+import com.mapbox.mapboxsdk.annotations.Icon
 import com.mapbox.mapboxsdk.annotations.MarkerOptions
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory
 import com.mapbox.mapboxsdk.geometry.LatLng
@@ -43,6 +46,10 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     private var mapboxMap : MapboxMap? = null
 
     private val TAG = "MainActivity"
+    private var currentDate : String? = null // FORMAT YYYY/MM/DD
+    private val preferencesFile : String = "CoinzPrefsFile"
+    private var lastDownloadDate : String? = null
+    private var cachedMap : String? = null
 
     /**
      * First set up method called, getting the [Mapbox] instance and requesting the [MapboxMap].
@@ -68,6 +75,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      * @param[result] the downloaded GeoJSON (as a [String]) which describes the location of the coins
      */
     override fun downloadComplete(result: String) {
+        cachedMap = result
+        lastDownloadDate = currentDate
         val sneakpeak = result.take(25)
         Log.d(TAG, "[downloadComplete]: $sneakpeak...")
         addMarkers(result)
@@ -91,10 +100,18 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                 val point = feature.geometry() as Point
                 val lat = point.coordinates().get(1)
                 val long = point.coordinates().get(0)
+                val properties : JsonObject? = feature.properties()
+                val id : String? = properties?.get("id")?.asString
+                val value : String? = properties?.get("value")?.asString
+                val currency : String? = properties?.get("currency")?.asString
+                val symbol : String? = properties?.get("marker-symbol")?.asString
+                val colour : String? = properties?.get("marker-color")?.asString
 
+                val x : Icon? = null
                 this.mapboxMap?.addMarker(
                         MarkerOptions()
-                                .title("Hi")
+                                .title(symbol)
+                                .snippet("Currency: $currency.\nValue: $value.")
                                 .position(LatLng(lat, long)))
             }
         }
@@ -118,28 +135,23 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
             // Start download from here to make sure that the mapboxMap isn't null when
             // it's time to add markers
-            val year = Calendar.getInstance().get(Calendar.YEAR).toString()
-            var month = (Calendar.getInstance().get(Calendar.MONTH) + 1).toString()  // Add one as 0-indexed
-            var day = Calendar.getInstance().get(Calendar.DAY_OF_MONTH).toString()
-            if (year != "2018" && year != "2019") {
-                error("Unsupported date")
+
+            if (lastDownloadDate != currentDate) {
+                Log.d(TAG, "[onMapReady] downloading coins location map")
+                val date_string: String = "http://homepages.inf.ed.ac.uk/stg/coinz/$currentDate/coinzmap.geojson"
+                DownloadFileTask(this).execute(date_string)
+            } else {
+                if (cachedMap == null) {
+                    Log.e(TAG, "[onMapReady] cached map is null but last seen download was today")
+                } else {
+                    Log.d(TAG, "[onMapReady] adding markers for cached map")
+                    addMarkers(cachedMap!!)
+                }
             }
-            if (month.length < 2) {
-                // Pad to 0M format
-                month = "0$month"
-            }
-            if (day.length < 2) {
-                // Pad to 0D format
-                day = "0$day"
-            }
-            // TODO make above nicer
-            val date = "$year/$month/$day"
-            Log.d(TAG, date)
-            val date_string = "http://homepages.inf.ed.ac.uk/stg/coinz/" + date + "/coinzmap.geojson"
-            DownloadFileTask(this).execute(
-                    date_string)
+
         }
     }
+
 
     /**
      * Checks if the necessary location permissions have been granted. If so, invokes the
@@ -251,6 +263,33 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     override fun onStart() {
         super.onStart()
         mapView?.onStart()
+
+        // Restore preferences
+        val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
+        lastDownloadDate = settings.getString("lastDownloadDate", null)
+        Log.d(TAG, "[onStart] Fetched lastDownloadDate: $lastDownloadDate")
+        cachedMap = settings.getString("cachedMap", null)
+        Log.d(TAG, "[onStart] Fetched cachedMap: ${cachedMap?.take(25)}")
+
+        val year : String = Calendar.getInstance().get(Calendar.YEAR).toString()
+        var month : String = (Calendar.getInstance().get(Calendar.MONTH) + 1).toString()  // Add one as 0-indexed
+        var day : String = Calendar.getInstance().get(Calendar.DAY_OF_MONTH).toString()
+        if (year != "2018" && year != "2019") {
+            Log.e(TAG, "Unsupported date")
+        }
+        if (month.length < 2) {
+            // Pad to 0M format
+            month = "0$month"
+        }
+        if (day.length < 2) {
+            // Pad to 0D format
+            day = "0$day"
+        }
+        // TODO make above nicer
+        currentDate = "$year/$month/$day"
+        Log.d(TAG, "[onStart] today's date: $currentDate")
+
+        // Need to get date in onStart() because app may have been left running overnight
     }
 
     override fun onResume() {
@@ -261,6 +300,20 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     override fun onStop() {
         super.onStop()
         mapView?.onStop()
+
+        // Store preferences
+        val settings : SharedPreferences = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
+        val editor : SharedPreferences.Editor = settings.edit()
+
+        Log.d(TAG, "[onStop] storing lastDownloadDate: $lastDownloadDate")
+        editor.putString("lastDownloadDate", lastDownloadDate)
+
+        val sneakpeak : String? = cachedMap?.take(25)
+        Log.d(TAG, "[onStop] storing cachedMap: $sneakpeak...")
+        editor.putString("cachedMap", cachedMap)
+
+        editor.apply()
+
     }
 
     override fun onLowMemory() {
