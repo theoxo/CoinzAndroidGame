@@ -1,12 +1,18 @@
 package com.coinzgame.theoxo.coinz
 
-import android.content.Context
-import android.content.SharedPreferences
+import android.app.PendingIntent
+import android.content.*
 import android.location.Location
 import android.os.Bundle
+import android.os.ResultReceiver
+import android.os.Handler
+import android.support.v4.content.LocalBroadcastManager
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
-import com.google.gson.JsonElement
+import com.google.android.gms.location.Geofence
+import com.google.android.gms.location.GeofencingClient
+import com.google.android.gms.location.GeofencingRequest
+import com.google.android.gms.location.LocationServices
 import com.google.gson.JsonObject
 import com.mapbox.android.core.location.LocationEngine
 import com.mapbox.android.core.location.LocationEngineListener
@@ -27,6 +33,7 @@ import com.mapbox.mapboxsdk.maps.OnMapReadyCallback
 import com.mapbox.mapboxsdk.plugins.locationlayer.LocationLayerPlugin
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.CameraMode
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.RenderMode
+import org.jetbrains.anko.toast
 
 import java.util.*
 
@@ -51,18 +58,41 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     private var lastDownloadDate : String? = null
     private var cachedMap : String? = null
 
+    // Trying to add geofencing
+    private var geofencingClient : GeofencingClient? = null
+    private var geofenceList : ArrayList<Geofence>? = null
+
+    val geofencingPendingIntent : PendingIntent by lazy {
+        val intent = Intent(this, GeofenceTransitionsIntentService::class.java)
+        PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+    }
+
     /**
      * First set up method called, getting the [Mapbox] instance and requesting the [MapboxMap].
      *
      * @param[savedInstanceState] the previously saved instance state, if it exists.
      */
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         Mapbox.getInstance(this,
                 "***REMOVED***")
 
+        val lbm : LocalBroadcastManager = LocalBroadcastManager.getInstance(this)
+        val receiver : BroadcastReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                Log.d(TAG, "[onReceive] BroadcastReceiver has received an intent")
+                toast("Coin Encountered")
+                // TODO make the above change depending on the coin and so on, ultimately to allow
+                // for picking the coin up
+            }
+        }
+
+        lbm.registerReceiver(receiver, IntentFilter(LBM_LISTENER))
+
+        geofencingClient = LocationServices.getGeofencingClient(this)
         mapView = findViewById(R.id.mapView)
         mapView?.onCreate(savedInstanceState)
         mapView?.getMapAsync(this)
@@ -88,32 +118,60 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      * @param[geoJsonString] the downloaded GeoJSON (as a [String]) which describes the location of the coins
      */
     private fun addMarkers(geoJsonString : String) {
-
+        geofenceList = ArrayList<Geofence>()
+        val geofence_radius : Float = 25.toFloat()
         val features = FeatureCollection.fromJson(geoJsonString).features()
 
         if (features == null) {
-            Log.d(TAG, "[downloadComplete] features is null")
+            Log.e(TAG, "[downloadComplete] features is null")
         } else if (this.mapboxMap == null) {
-            Log.d(TAG, "[downloadComplete] mapboxMap is null, can't add markers")
+            Log.e(TAG, "[downloadComplete] mapboxMap is null, can't add markers")
         } else {
             for (feature in features) {
-                val point = feature.geometry() as Point
-                val lat = point.coordinates().get(1)
-                val long = point.coordinates().get(0)
-                val properties : JsonObject? = feature.properties()
-                val id : String? = properties?.get("id")?.asString
-                val value : String? = properties?.get("value")?.asString
-                val currency : String? = properties?.get("currency")?.asString
-                val symbol : String? = properties?.get("marker-symbol")?.asString
-                val colour : String? = properties?.get("marker-color")?.asString
+                val point: Point = feature.geometry() as Point
+                val lat: Double = point.coordinates().get(1)
+                val long: Double = point.coordinates().get(0)
+                val properties: JsonObject? = feature.properties()
+                val id: String? = properties?.get("id")?.asString
+                val value: String? = properties?.get("value")?.asString
+                val currency: String? = properties?.get("currency")?.asString
+                val symbol: String? = properties?.get("marker-symbol")?.asString
+                val colour: String? = properties?.get("marker-color")?.asString
 
-                val x : Icon? = null
+                val x: Icon? = null
                 this.mapboxMap?.addMarker(
                         MarkerOptions()
                                 .title(symbol)
                                 .snippet("Currency: $currency.\nValue: $value.")
                                 .position(LatLng(lat, long)))
+
+
+                geofenceList?.add(Geofence.Builder()
+                        .setRequestId(id)
+                        .setExpirationDuration(Geofence.NEVER_EXPIRE)
+                        .setCircularRegion(
+                                lat,
+                                long,
+                                geofence_radius)
+                        .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER)
+                        .build())
             }
+
+            val geofencingRequest: GeofencingRequest = GeofencingRequest.Builder().apply {
+                setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
+                addGeofences(geofenceList)
+            }.build()
+
+            geofencingClient?.addGeofences(geofencingRequest, geofencingPendingIntent)?.run {
+                addOnSuccessListener {
+                    Log.d(TAG, "[addGeofences] Sucessfully added the geofences")
+                }
+
+                addOnFailureListener {
+                    Log.e(TAG, "[addGeofences] FAILED")
+                }
+            }
+
         }
     }
 
