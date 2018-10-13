@@ -4,8 +4,6 @@ import android.app.PendingIntent
 import android.content.*
 import android.location.Location
 import android.os.Bundle
-import android.os.ResultReceiver
-import android.os.Handler
 import android.support.v4.content.LocalBroadcastManager
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
@@ -44,8 +42,8 @@ import kotlin.collections.HashMap
 import kotlin.collections.HashSet
 
 /**
- * The app's main Activity, handling loading and displaying the map,
- * tracking the user's location, and marking the coins on the map.
+ * The app's main Activity, handling various aspects of loading and displaying the map,
+ * tracking the user's location, marking the coins on the map and picking them up.
  */
 class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineListener,
         OnMapReadyCallback, DownloadCompleteListener {
@@ -78,6 +76,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
     /**
      * First set up method called, getting the [Mapbox] instance and requesting the [MapboxMap].
+     * Also sets up the necessary fields, onClick listeners and the geofence broadcast manager.
      *
      * @param[savedInstanceState] the previously saved instance state, if it exists.
      */
@@ -95,7 +94,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         // Set up click event for the button
         collectButton.setOnClickListener(object : View.OnClickListener {
             override fun onClick(v: View?) {
-                // Remove all coins in range
+
+                // Collect all the coins in range
                 var numRemovedCoins : Int = 0
                 for (id in coinsInRange) {
                     val marker : Marker? = coinIdToMarker.get(id)
@@ -108,8 +108,15 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                     }
                 }
 
-                geofencingClient?.removeGeofences(ArrayList(coinsInRange))
-                Log.d(TAG, "[onClick] Removed geofences for the above IDs")
+                geofencingClient?.removeGeofences(ArrayList(coinsInRange))?.run {
+                    addOnSuccessListener {
+                        Log.d(TAG, "[collectButton.onClick][removeGeofences] Successful")
+                    }
+
+                    addOnFailureListener() {
+                        Log.e(TAG, "[collectButton.onClick][removeGeofences] FAILED")
+                    }
+                }
 
                 // Once done looping over coinsInRange, destroy it
                 coinsInRange = HashSet()
@@ -128,15 +135,21 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
             }
         })
 
+        // Settle up the broadcast managed and receiver to handle geofence transitions being
+        // passed back
         val lbm : LocalBroadcastManager = LocalBroadcastManager.getInstance(this)
         val receiver : BroadcastReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
+                // Handle the incoming message
                 Log.d(TAG, "[onReceive] BroadcastReceiver has received an intent")
 
-                val ids : ArrayList<String>? = intent?.getStringArrayListExtra("ids")
-                val type = intent?.getIntExtra("type", -1)
-                Log.d(TAG, "[onReceive] type of intent received: $type")
+                // Get the passed extras
+                val ids : ArrayList<String>? = intent?.getStringArrayListExtra(LBM_ID_TAG)
+                val type = intent?.getIntExtra(LBM_TYPE_TAG, -1)
+                Log.d(TAG, "[onReceive] Type of intent received: $type")
 
+                // Either add or remove coins to set keeping track of what is in range,
+                // depending on the type of the transition seen
                 if (type == Geofence.GEOFENCE_TRANSITION_ENTER) {
                     if (ids == null) {
                         Log.e(TAG, "[onReceive] GEOFENCE_TRANSITION_ENTER without any IDs")
@@ -155,12 +168,15 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                             coinsInRange.remove(id)
                         }
                     }
+                } else {
+                    Log.w(TAG, "[onReceive] Geofence transition type $type not expected")
                 }
 
                 updateCollectButton()
             }
         }
 
+        // Register the receiver to the manager
         lbm.registerReceiver(receiver, IntentFilter(LBM_LISTENER))
 
         geofencingClient = LocationServices.getGeofencingClient(this)
@@ -169,35 +185,40 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         mapView?.getMapAsync(this)
     }
 
+    /**
+     * Updates the collectButton text and sets its visibility, as appropriate given the
+     * number of nearby coins
+     */
     private fun updateCollectButton() {
-        // Update collectButton text and set its visibility accordingly
         val coinsInRangeSize : Int = coinsInRange.size
         if (coinsInRangeSize > 1) {
             collectButton.text = "Collect ${coinsInRange.size} Coins"
             collectButton.visibility = View.VISIBLE
         } else if (coinsInRangeSize == 1) {
-            collectButton.text = "Collect 1 Coin"
+            collectButton.text = "Collect one Coin"
             collectButton.visibility = View.VISIBLE
         } else {
             collectButton.visibility = View.GONE
         }
     }
+
     /**
      * Listener for the AsyncTask marker map data download having finished.
      * Calls addMarkers to add the markers to the map.
      *
-     * @param[result] the downloaded GeoJSON (as a [String]) which describes the location of the coins
+     * @param[result] the downloaded GeoJSON [String] which describes the location of the coins
      */
     override fun downloadComplete(result: String) {
         cachedMap = result
         lastDownloadDate = currentDate
         val sneakpeak = result.take(25)
-        Log.d(TAG, "[downloadComplete]: $sneakpeak...")
+        Log.d(TAG, "[downloadComplete] Result: $sneakpeak...")
         addMarkers(result)
     }
 
     /**
-     * Adds the markers for the coins to the [MapboxMap] being displayed.
+     * Adds the [Marker]s for the coins to the [MapboxMap] being displayed. Also sets up the
+     * corresponding [Geofence]s.
      *
      * @param[geoJsonString] the downloaded GeoJSON (as a [String]) which describes the location of the coins
      */
@@ -272,7 +293,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
     /**
      * Listener function for the async call to receive the [MapboxMap]. Sets up the local
-     * MapboxMap instance, and then begins to fetch today's coins.
+     * MapboxMap instance, and then begins to fetch today's coins if they are not already cached.
      *
      * @param[mapboxMap] the received MapboxMap
      */
@@ -290,7 +311,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
             // it's time to add markers
             if (cachedMap == null) {
                 Log.d(TAG, "[onMapReady] Downloading coins location map")
-                val date_string: String = "http://homepages.inf.ed.ac.uk/stg/coinz/$currentDate/coinzmap.geojson"
+                val date_string = "http://homepages.inf.ed.ac.uk/stg/coinz/$currentDate/coinzmap.geojson"
                 DownloadFileTask(this).execute(date_string)
             } else {
                 Log.d(TAG, "[onMapReady] Adding markers for cached map")
@@ -385,12 +406,16 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         }
     }
 
+    /**
+     * Simply passes the result on to the [permissionsManager].
+     */
+    // TODO understand this
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         permissionsManager.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
     /**
-     * Listener for the user's [Location] changing, updating the recorded and displayed location
+     * Listener for the user's [Location] changing, updating the recorded and displayed location.
      *
      * @param[location] the new [Location] found, or null
      */
@@ -401,12 +426,21 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         }
     }
 
+    /**
+     * Requests location updates from the [locationEngine] upon the activity being connected.
+     */
     @SuppressWarnings("MissingPermission")
     override fun onConnected() {
         Log.d(TAG, "[onConnected] Requesting location updates")
         locationEngine.requestLocationUpdates()
     }
 
+    /**
+     * Upon activity start, invokes the activity's and [mapView]'s super functions.
+     * Calculates [currentDate] and also fetches the preferences stored on the device, notably the
+     * [lastDownloadDate] and [cachedMap] so that the coin locations do not need to be downloaded
+     * uneccesarily.
+     */
     override fun onStart() {
         super.onStart()
         mapView?.onStart()
@@ -416,6 +450,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         lastDownloadDate = settings.getString("lastDownloadDate", null)
         Log.d(TAG, "[onStart] Fetched lastDownloadDate: $lastDownloadDate")
 
+        // Need to get date in onStart() because app may have been left running overnight
         val year : String = Calendar.getInstance().get(Calendar.YEAR).toString()
         var month : String = (Calendar.getInstance().get(Calendar.MONTH) + 1).toString()  // Add one as 0-indexed
         var day : String = Calendar.getInstance().get(Calendar.DAY_OF_MONTH).toString()
@@ -443,15 +478,22 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                 Log.d(TAG, "[onStart] Fetched cachedMap: ${cachedMap?.take(25)}")
             }
         }
-
-        // Need to get date in onStart() because app may have been left running overnight
     }
 
+    /**
+     * On activity being resumed, simply makes sure that the super functions are invoked for
+     * the activity and [mapView].
+     */
     override fun onResume() {
         super.onResume()
         mapView?.onResume()
     }
 
+    /**
+     * On stop, invokes the correct super functions (activity's and [mapView]'s) and saves the
+     * user preferences to the device, namely the (potentially updated) [lastDownloadDate] and
+     * [cachedMap].
+     */
     override fun onStop() {
         super.onStop()
         mapView?.onStop()
@@ -471,36 +513,29 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
     }
 
+    /**
+     * Invokes the activity's and [mapView]'s super functions.
+     */
     override fun onLowMemory() {
         super.onLowMemory()
         mapView?.onLowMemory()
     }
 
+    /**
+     * Invokes the activity's and [mapView]'s super functions.
+     */
     override fun onDestroy() {
         super.onDestroy()
         mapView?.onDestroy()
     }
 
+    /**
+     * Invokes the activity's and [mapView]'s super functions.
+     */
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         mapView?.onSaveInstanceState(outState)
     }
 
-    /*
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        menuInflater.inflate(R.menu.menu_main, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        return when (item.itemId) {
-            R.id.action_settings -> true
-            else -> super.onOptionsItemSelected(item)
-        }
-    }*/
 }
 
