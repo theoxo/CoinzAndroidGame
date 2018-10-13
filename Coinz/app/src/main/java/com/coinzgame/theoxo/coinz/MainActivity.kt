@@ -40,6 +40,7 @@ import org.jetbrains.anko.toast
 
 import java.util.*
 import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 import kotlin.collections.HashSet
 
 /**
@@ -73,6 +74,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
     // Keep track of which coins are within range
     private lateinit var coinsInRange : HashSet<String>
+    private lateinit var coinIdToMarker : HashMap<String, Marker>
 
     /**
      * First set up method called, getting the [Mapbox] instance and requesting the [MapboxMap].
@@ -88,6 +90,43 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                 "***REMOVED***")
 
         coinsInRange = HashSet<String>()
+        coinIdToMarker = HashMap<String, Marker>()
+
+        // Set up click event for the button
+        collectButton.setOnClickListener(object : View.OnClickListener {
+            override fun onClick(v: View?) {
+                // Remove all coins in range
+                var numRemovedCoins : Int = 0
+                for (id in coinsInRange) {
+                    val marker : Marker? = coinIdToMarker.get(id)
+                    if (marker != null) {
+                        mapboxMap?.removeMarker(marker)
+                        Log.d(TAG, "[collectButton.onClick] Removed marker with id $id")
+                        numRemovedCoins++
+                    } else {
+                        Log.e(TAG, "[collectButton.onClick] Could not find marker for id $id")
+                    }
+                }
+
+                geofencingClient?.removeGeofences(ArrayList(coinsInRange))
+                Log.d(TAG, "[onClick] Removed geofences for the above IDs")
+
+                // Once done looping over coinsInRange, destroy it
+                coinsInRange = HashSet()
+
+                // Update the button text and visibility
+                updateCollectButton()
+
+                // Finally let the user know how many coins were collected
+                if (numRemovedCoins == 0) {
+                    Log.w(TAG, "[collectButton.onClick] numRemoved coins is 0")
+                } else if (numRemovedCoins == 1) {
+                    toast("Collected one coin")
+                } else {
+                    toast("Collected $numRemovedCoins coins")
+                }
+            }
+        })
 
         val lbm : LocalBroadcastManager = LocalBroadcastManager.getInstance(this)
         val receiver : BroadcastReceiver = object : BroadcastReceiver() {
@@ -97,8 +136,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                 val ids : ArrayList<String>? = intent?.getStringArrayListExtra("ids")
                 val type = intent?.getIntExtra("type", -1)
                 Log.d(TAG, "[onReceive] type of intent received: $type")
-                // TODO make the above change depending on the coin and so on, ultimately to allow
-                // for picking the coin up
+
                 if (type == Geofence.GEOFENCE_TRANSITION_ENTER) {
                     if (ids == null) {
                         Log.e(TAG, "[onReceive] GEOFENCE_TRANSITION_ENTER without any IDs")
@@ -118,6 +156,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                         }
                     }
                 }
+
+                updateCollectButton()
             }
         }
 
@@ -129,6 +169,19 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         mapView?.getMapAsync(this)
     }
 
+    private fun updateCollectButton() {
+        // Update collectButton text and set its visibility accordingly
+        val coinsInRangeSize : Int = coinsInRange.size
+        if (coinsInRangeSize > 1) {
+            collectButton.text = "Collect ${coinsInRange.size} Coins"
+            collectButton.visibility = View.VISIBLE
+        } else if (coinsInRangeSize == 1) {
+            collectButton.text = "Collect 1 Coin"
+            collectButton.visibility = View.VISIBLE
+        } else {
+            collectButton.visibility = View.GONE
+        }
+    }
     /**
      * Listener for the AsyncTask marker map data download having finished.
      * Calls addMarkers to add the markers to the map.
@@ -166,15 +219,24 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                 val id: String? = properties?.get("id")?.asString
                 val value: String? = properties?.get("value")?.asString
                 val currency: String? = properties?.get("currency")?.asString
-                val symbol: String? = properties?.get("marker-symbol")?.asString
-                val colour: String? = properties?.get("marker-color")?.asString
+                //val symbol: String? = properties?.get("marker-symbol")?.asString
+                //val colour: String? = properties?.get("marker-color")?.asString
 
-                val x: Icon? = null
-                this.mapboxMap?.addMarker(
-                        MarkerOptions()
-                                .title(id)
-                                .snippet("Currency: $currency.\nValue: $value.")
-                                .position(LatLng(lat, long)))
+                // Ad id -> location to the hashmap so we can identify markers by id later
+                val addedMarker : Marker? = this.mapboxMap?.addMarker(
+                                    MarkerOptions()
+                                    .title(id)
+                                    .snippet("Currency: $currency.\nValue: $value.")
+                                    .position(LatLng(lat, long)))
+                if (addedMarker != null) {
+                    if (id != null) {
+                        coinIdToMarker[id] = addedMarker
+                    } else {
+                        Log.e(TAG, "[addMarkers] successfully added marker but ID was null")
+                    }
+                } else {
+                    Log.e(TAG, "[addMarkers] addedMarker is null; FAILED to add marker?")
+                }
 
 
                 geofenceList?.add(Geofence.Builder()
@@ -226,20 +288,14 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
             // Start download from here to make sure that the mapboxMap isn't null when
             // it's time to add markers
-
-            if (lastDownloadDate != currentDate) {
-                Log.d(TAG, "[onMapReady] downloading coins location map")
+            if (cachedMap == null) {
+                Log.d(TAG, "[onMapReady] Downloading coins location map")
                 val date_string: String = "http://homepages.inf.ed.ac.uk/stg/coinz/$currentDate/coinzmap.geojson"
                 DownloadFileTask(this).execute(date_string)
             } else {
-                if (cachedMap == null) {
-                    Log.e(TAG, "[onMapReady] cached map is null but last seen download was today")
-                } else {
-                    Log.d(TAG, "[onMapReady] adding markers for cached map")
-                    addMarkers(cachedMap!!)
-                }
+                Log.d(TAG, "[onMapReady] Adding markers for cached map")
+                addMarkers(cachedMap!!)
             }
-
         }
     }
 
@@ -359,8 +415,6 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
         lastDownloadDate = settings.getString("lastDownloadDate", null)
         Log.d(TAG, "[onStart] Fetched lastDownloadDate: $lastDownloadDate")
-        cachedMap = settings.getString("cachedMap", null)
-        Log.d(TAG, "[onStart] Fetched cachedMap: ${cachedMap?.take(25)}")
 
         val year : String = Calendar.getInstance().get(Calendar.YEAR).toString()
         var month : String = (Calendar.getInstance().get(Calendar.MONTH) + 1).toString()  // Add one as 0-indexed
@@ -378,7 +432,17 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         }
         // TODO make above nicer
         currentDate = "$year/$month/$day"
-        Log.d(TAG, "[onStart] today's date: $currentDate")
+        Log.d(TAG, "[onStart] Today's date: $currentDate")
+
+        if (currentDate == lastDownloadDate) {
+            Log.d(TAG, "[onStart] Dates match, fetching cached map")
+            cachedMap = settings.getString("cachedMap", null)
+            if (cachedMap == null) {
+                Log.w(TAG, "[onStart] Dates matched but fetched cachedMap is null!")
+            } else {
+                Log.d(TAG, "[onStart] Fetched cachedMap: ${cachedMap?.take(25)}")
+            }
+        }
 
         // Need to get date in onStart() because app may have been left running overnight
     }
@@ -396,11 +460,11 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         val settings : SharedPreferences = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
         val editor : SharedPreferences.Editor = settings.edit()
 
-        Log.d(TAG, "[onStop] storing lastDownloadDate: $lastDownloadDate")
+        Log.d(TAG, "[onStop] Storing lastDownloadDate: $lastDownloadDate")
         editor.putString("lastDownloadDate", lastDownloadDate)
 
         val sneakpeak : String? = cachedMap?.take(25)
-        Log.d(TAG, "[onStop] storing cachedMap: $sneakpeak...")
+        Log.d(TAG, "[onStop] Storing cachedMap: $sneakpeak...")
         editor.putString("cachedMap", cachedMap)
 
         editor.apply()

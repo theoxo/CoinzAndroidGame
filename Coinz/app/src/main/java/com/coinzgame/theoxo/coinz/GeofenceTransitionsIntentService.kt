@@ -32,8 +32,8 @@ class GeofenceTransitionsIntentService : IntentService("GeofenceTransitionsInten
 
         // Test that the reported transition was of interest
         if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
-            lbmIntent?.putExtra("type", Geofence.GEOFENCE_TRANSITION_ENTER)
-            var ids : ArrayList<String>? = ArrayList()
+            lbmIntent.putExtra("type", Geofence.GEOFENCE_TRANSITION_ENTER)
+            val ids : ArrayList<String>? = ArrayList()
             for (triggeringGeofence in triggeringGeofences) {
                 ids?.add(triggeringGeofence.requestId)
                 lbmIntent.putExtra("id", triggeringGeofence.requestId)
@@ -41,8 +41,8 @@ class GeofenceTransitionsIntentService : IntentService("GeofenceTransitionsInten
             lbmIntent.putStringArrayListExtra("ids", ids)
             Log.d(TAG, "[onHandleIntent] GEOFENCE_TRANSITION_ENTER found")
         } else if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT) {
-            lbmIntent?.putExtra("type", Geofence.GEOFENCE_TRANSITION_EXIT)
-            var ids : ArrayList<String>? = ArrayList()
+            lbmIntent.putExtra("type", Geofence.GEOFENCE_TRANSITION_EXIT)
+            val ids : ArrayList<String>? = ArrayList()
             for (triggeringGeofence in triggeringGeofences) {
                 ids?.add(triggeringGeofence.requestId)
                 lbmIntent.putExtra("id", triggeringGeofence.requestId)
