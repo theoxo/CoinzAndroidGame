@@ -7,6 +7,7 @@ import android.support.v4.content.LocalBroadcastManager
 import android.util.Log
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingEvent
+import java.util.ArrayList
 
 public const val LBM_LISTENER = "CoinEncountered"
 
@@ -24,18 +25,35 @@ class GeofenceTransitionsIntentService : IntentService("GeofenceTransitionsInten
 
         // Get transition type
         val geofenceTransition = geofencingEvent.geofenceTransition
+        // Get the triggered geofences (may be multiple)
+        val triggeringGeofences = geofencingEvent.triggeringGeofences
+
+        val lbmIntent : Intent = Intent(LBM_LISTENER)
 
         // Test that the reported transition was of interest
         if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
-            // Get the triggered geofences (may be multiple)
-            val triggeringGeofences = geofencingEvent.triggeringGeofences
-            // TODO do more interesting things with the above
+            lbmIntent?.putExtra("type", Geofence.GEOFENCE_TRANSITION_ENTER)
+            var ids : ArrayList<String>? = ArrayList()
+            for (triggeringGeofence in triggeringGeofences) {
+                ids?.add(triggeringGeofence.requestId)
+                lbmIntent.putExtra("id", triggeringGeofence.requestId)
+            }
+            lbmIntent.putStringArrayListExtra("ids", ids)
             Log.d(TAG, "[onHandleIntent] GEOFENCE_TRANSITION_ENTER found")
+        } else if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT) {
+            lbmIntent?.putExtra("type", Geofence.GEOFENCE_TRANSITION_EXIT)
+            var ids : ArrayList<String>? = ArrayList()
+            for (triggeringGeofence in triggeringGeofences) {
+                ids?.add(triggeringGeofence.requestId)
+                lbmIntent.putExtra("id", triggeringGeofence.requestId)
+            }
+            lbmIntent.putStringArrayListExtra("ids", ids)
+            Log.d(TAG, "[onHandleIntent] GEOFENCE_TRANSITION_EXIT found")
         } else {
             Log.d(TAG, "Geofence event triggered but was not an interesting type")
         }
 
-        val lbmIntent : Intent = Intent(LBM_LISTENER)
+
         LocalBroadcastManager.getInstance(this).sendBroadcast(lbmIntent)
     }
 }

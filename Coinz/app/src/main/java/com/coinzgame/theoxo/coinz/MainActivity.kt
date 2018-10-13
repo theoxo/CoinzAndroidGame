@@ -9,6 +9,7 @@ import android.os.Handler
 import android.support.v4.content.LocalBroadcastManager
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
+import android.view.View
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingClient
 import com.google.android.gms.location.GeofencingRequest
@@ -24,6 +25,7 @@ import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
 import com.mapbox.mapboxsdk.Mapbox
 import com.mapbox.mapboxsdk.annotations.Icon
+import com.mapbox.mapboxsdk.annotations.Marker
 import com.mapbox.mapboxsdk.annotations.MarkerOptions
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory
 import com.mapbox.mapboxsdk.geometry.LatLng
@@ -33,9 +35,12 @@ import com.mapbox.mapboxsdk.maps.OnMapReadyCallback
 import com.mapbox.mapboxsdk.plugins.locationlayer.LocationLayerPlugin
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.CameraMode
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.RenderMode
+import kotlinx.android.synthetic.main.activity_main.*
 import org.jetbrains.anko.toast
 
 import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.collections.HashSet
 
 /**
  * The app's main Activity, handling loading and displaying the map,
@@ -61,11 +66,13 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     // Trying to add geofencing
     private var geofencingClient : GeofencingClient? = null
     private var geofenceList : ArrayList<Geofence>? = null
-
     val geofencingPendingIntent : PendingIntent by lazy {
         val intent = Intent(this, GeofenceTransitionsIntentService::class.java)
         PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
     }
+
+    // Keep track of which coins are within range
+    private lateinit var coinsInRange : HashSet<String>
 
     /**
      * First set up method called, getting the [Mapbox] instance and requesting the [MapboxMap].
@@ -80,13 +87,37 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         Mapbox.getInstance(this,
                 "***REMOVED***")
 
+        coinsInRange = HashSet<String>()
+
         val lbm : LocalBroadcastManager = LocalBroadcastManager.getInstance(this)
         val receiver : BroadcastReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 Log.d(TAG, "[onReceive] BroadcastReceiver has received an intent")
-                toast("Coin Encountered")
+
+                val ids : ArrayList<String>? = intent?.getStringArrayListExtra("ids")
+                val type = intent?.getIntExtra("type", -1)
+                Log.d(TAG, "[onReceive] type of intent received: $type")
                 // TODO make the above change depending on the coin and so on, ultimately to allow
                 // for picking the coin up
+                if (type == Geofence.GEOFENCE_TRANSITION_ENTER) {
+                    if (ids == null) {
+                        Log.e(TAG, "[onReceive] GEOFENCE_TRANSITION_ENTER without any IDs")
+                    } else {
+                        for (id in ids) {
+                            Log.d(TAG, "[onReceive] Adding id \"$id\" to coinsInRange")
+                            coinsInRange.add(id)
+                        }
+                    }
+                } else if (type == Geofence.GEOFENCE_TRANSITION_EXIT) {
+                    if (ids == null) {
+                        Log.e(TAG, "[onReceive] GEOFENCE_TRANSITION_EXIT without any IDs")
+                    } else {
+                        for (id in ids) {
+                            Log.d(TAG, "[onReceive] Removing id \"$id\" from coinsInRange")
+                            coinsInRange.remove(id)
+                        }
+                    }
+                }
             }
         }
 
@@ -141,7 +172,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                 val x: Icon? = null
                 this.mapboxMap?.addMarker(
                         MarkerOptions()
-                                .title(symbol)
+                                .title(id)
                                 .snippet("Currency: $currency.\nValue: $value.")
                                 .position(LatLng(lat, long)))
 
@@ -153,7 +184,9 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                                 lat,
                                 long,
                                 geofence_radius)
-                        .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER)
+                        .setTransitionTypes(
+                                Geofence.GEOFENCE_TRANSITION_ENTER
+                                        or Geofence.GEOFENCE_TRANSITION_EXIT)
                         .build())
             }
 
