@@ -45,7 +45,13 @@ dependencies {
     implementation 'com.mapbox.mapboxsdk:mapbox-android-sdk:6.5.0'
     implementation 'com.mapbox.mapboxsdk:mapbox-android-plugin-locationlayer:0.5.3'
 
+    // Firebase
+    implementation 'com.google.firebase:firebase-auth:16.0.4'
+    implementation 'com.google.firebase:firebase-core:16.0.4'
+
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
     testImplementation 'junit:junit:4.12'
 }
+
+apply plugin: 'com.google.gms.google-services'

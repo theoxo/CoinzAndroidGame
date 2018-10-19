@@ -12,6 +12,8 @@ import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingClient
 import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import com.google.gson.JsonObject
 import com.mapbox.android.core.location.LocationEngine
 import com.mapbox.android.core.location.LocationEngineListener
@@ -62,7 +64,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     private var lastDownloadDate : String? = null
     private var cachedMap : String? = null
 
-    // Trying to add geofencing
+    // Geofencing
     private var geofencingClient : GeofencingClient? = null
     private var geofenceList : ArrayList<Geofence>? = null
     val geofencingPendingIntent : PendingIntent by lazy {
@@ -303,7 +305,6 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         } else {
             this.mapboxMap = mapboxMap
             this.mapboxMap?.uiSettings?.isCompassEnabled = true
-            this.mapboxMap?.uiSettings?.isZoomControlsEnabled = true
 
             enableLocation()
 
@@ -443,6 +444,9 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      */
     override fun onStart() {
         super.onStart()
+
+        // Check if user is signed in
+
         mapView?.onStart()
 
         // Restore preferences
