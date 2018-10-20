@@ -5,6 +5,8 @@ import android.os.Bundle
 import android.view.View
 
 import android.content.Intent
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.android.gms.tasks.Task
@@ -23,12 +25,55 @@ class LoginActivity : AppCompatActivity() {
 
     private val TAG = "LoginActivity"
 
+    private var emailEmpty : Boolean = true
+    private var pwEmpty : Boolean = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
 
         // Initialize authentication service
         mAuth = FirebaseAuth.getInstance()
+
+        email.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                // Not interested
+            }
+
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
+                // Not interested
+            }
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if (email.text.toString().trim().length == 0) {
+                    emailEmpty = true
+                } else {
+                    emailEmpty = false
+                }
+
+                updateButtons()
+            }
+        })
+
+        password.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                // Not interested
+            }
+
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
+                // Not interested
+            }
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if (password.text.toString().trim().length == 0) {
+                    pwEmpty = true
+                } else {
+                    pwEmpty = false
+                }
+
+                updateButtons()
+            }
+        })
 
         email_sign_in_button.setOnClickListener(object : View.OnClickListener {
             override fun onClick(v: View?) {
@@ -44,8 +89,19 @@ class LoginActivity : AppCompatActivity() {
 
         val currentUser = mAuth?.currentUser
         if (currentUser != null) {
-            Log.d(TAG, "User already logged in ")
+            Log.d(TAG, "User already logged in, moving on to main")
             startMain()
+        }
+    }
+
+    private fun updateButtons() {
+        if (!pwEmpty && !emailEmpty) {
+            // If both textfields are non-empty, enable the buttons
+            email_sign_in_button.isEnabled = true
+            email_register_button.isEnabled = true
+        } else {
+            email_sign_in_button.isEnabled = false
+            email_register_button.isEnabled = false
         }
     }
 

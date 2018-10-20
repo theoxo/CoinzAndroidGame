@@ -8,12 +8,11 @@ import android.support.v4.content.LocalBroadcastManager
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.view.View
+import com.coinzgame.theoxo.coinz.R.id.home_nav
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingClient
 import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseUser
 import com.google.gson.JsonObject
 import com.mapbox.android.core.location.LocationEngine
 import com.mapbox.android.core.location.LocationEngineListener
@@ -445,7 +444,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     override fun onStart() {
         super.onStart()
 
-        // Check if user is signed in
+        // Default navigation bar item checked should be home
+        bottom_nav_bar.selectedItemId = home_nav
 
         mapView?.onStart()
 
