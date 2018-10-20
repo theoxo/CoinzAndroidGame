@@ -4,9 +4,11 @@ import android.app.PendingIntent
 import android.content.*
 import android.location.Location
 import android.os.Bundle
+import android.support.design.widget.BottomNavigationView
 import android.support.v4.content.LocalBroadcastManager
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
+import android.view.MenuItem
 import android.view.View
 import com.coinzgame.theoxo.coinz.R.id.home_nav
 import com.google.android.gms.location.Geofence
@@ -47,7 +49,8 @@ import kotlin.collections.HashSet
  * tracking the user's location, marking the coins on the map and picking them up.
  */
 class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineListener,
-        OnMapReadyCallback, DownloadCompleteListener {
+        OnMapReadyCallback, DownloadCompleteListener,
+        BottomNavigationView.OnNavigationItemSelectedListener {
 
     private lateinit var permissionsManager : PermissionsManager
     private lateinit var originLocation : Location
@@ -180,10 +183,31 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         // Register the receiver to the manager
         lbm.registerReceiver(receiver, IntentFilter(LBM_LISTENER))
 
+        // Set up click events for bottom nav bar
+        bottom_nav_bar.setOnNavigationItemSelectedListener(this)
+        // Set default to home
+        bottom_nav_bar.selectedItemId = R.id.home_nav
+
         geofencingClient = LocationServices.getGeofencingClient(this)
-        mapView = findViewById(R.id.mapView)
+        mapView = findViewById<MapView>(R.id.mapView)
         mapView?.onCreate(savedInstanceState)
-        mapView?.getMapAsync(this)
+
+        enableLocation()
+    }
+
+    override fun onNavigationItemSelected(item : MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.account_nav -> startAccountActivity()
+            else -> return true //do nothing
+        }
+
+        return true
+    }
+
+    private fun startAccountActivity() {
+        val intent = Intent(this, AccountActivity::class.java)
+        startActivity(intent)
+
     }
 
     /**
@@ -211,7 +235,6 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      */
     override fun downloadComplete(result: String) {
         cachedMap = result
-        lastDownloadDate = currentDate
         val sneakpeak = result.take(25)
         Log.d(TAG, "[downloadComplete] Result: $sneakpeak...")
         addMarkers(result)
@@ -300,12 +323,13 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      */
     override fun onMapReady(mapboxMap: MapboxMap?) {
         if (mapboxMap == null) {
-            Log.d(TAG, "[onMapReady] mapboxMap is null")
+            Log.e(TAG, "[onMapReady] mapboxMap is null")
         } else {
             this.mapboxMap = mapboxMap
             this.mapboxMap?.uiSettings?.isCompassEnabled = true
 
-            enableLocation()
+            initializeLocationEngine()
+            initializeLocationLayer()
 
             // Start download from here to make sure that the mapboxMap isn't null when
             // it's time to add markers
@@ -329,8 +353,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     private fun enableLocation() {
         if (PermissionsManager.areLocationPermissionsGranted(this)) {
             Log.d(TAG, "[enableLocation] Permissions granted")
-            initializeLocationEngine()
-            initializeLocationLayer()
+            mapView?.getMapAsync(this)
         } else {
             Log.d(TAG, "[enableLocation] Permissions not granted")
             permissionsManager = PermissionsManager(this)
@@ -402,7 +425,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         if (granted) {
             enableLocation()
         } else {
-            Log.d(TAG, "[onPermissionResult] Permissions not granted")
+            Log.e(TAG, "[onPermissionResult] Permissions not granted")
+            // TODO explain to user why necessary
         }
     }
 
@@ -502,18 +526,22 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         super.onStop()
         mapView?.onStop()
 
-        // Store preferences
-        val settings : SharedPreferences = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
-        val editor : SharedPreferences.Editor = settings.edit()
+        if (lastDownloadDate == currentDate) {
+            Log.d(TAG, "[onStop] Not storing prefs as no change has been made")
+        } else {
+            // Store preferences
+            val settings: SharedPreferences = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
+            val editor: SharedPreferences.Editor = settings.edit()
 
-        Log.d(TAG, "[onStop] Storing lastDownloadDate: $lastDownloadDate")
-        editor.putString("lastDownloadDate", lastDownloadDate)
+            Log.d(TAG, "[onStop] Storing lastDownloadDate as currentDate: $currentDate")
+            editor.putString("lastDownloadDate", currentDate)
 
-        val sneakpeak : String? = cachedMap?.take(25)
-        Log.d(TAG, "[onStop] Storing cachedMap: $sneakpeak...")
-        editor.putString("cachedMap", cachedMap)
+            val sneakpeak: String? = cachedMap?.take(25)
+            Log.d(TAG, "[onStop] Storing cachedMap: $sneakpeak...")
+            editor.putString("cachedMap", cachedMap)
 
-        editor.apply()
+            editor.apply()
+        }
 
     }
 

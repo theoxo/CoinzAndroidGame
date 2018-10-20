@@ -21,7 +21,7 @@ import org.jetbrains.anko.toast
  */
 class LoginActivity : AppCompatActivity() {
 
-    private var mAuth : FirebaseAuth? = null
+    public var mAuth : FirebaseAuth? = null
 
     private val TAG = "LoginActivity"
 
@@ -135,8 +135,27 @@ class LoginActivity : AppCompatActivity() {
                     }
                 })
     }
+
     private fun startMain() {
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+
+        // Might have received intent to log out here
+        val extras = intent?.extras
+        if (extras == null) {
+            Log.d(TAG, "[onResume] No extras in intent")
+        } else {
+            val shouldLogoutUser : Boolean = extras.getBoolean(LOGOUT_FLAG, false)
+            if (shouldLogoutUser) {
+                Log.d(TAG, "[onResume] Logging out the user")
+                mAuth?.signOut()
+            } else {
+                Log.d(TAG, "[onResume] Extras non-null but log out not requested")
+            }
+        }
     }
 }

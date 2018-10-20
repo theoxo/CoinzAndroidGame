@@ -34,7 +34,8 @@
             </intent-filter>
         </activity>
         <activity android:name=".BaseNavigationActivity" />
-        <activity android:name=".LogoutActivity"></activity>
+        <activity android:name=".LogoutActivity" />
+        <activity android:name=".AccountActivity"></activity>
     </application>
 
 </manifest>
