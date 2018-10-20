@@ -2,15 +2,11 @@ package com.coinzgame.theoxo.coinz
 
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
-import android.view.View
 
 import android.content.Intent
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
-import com.google.android.gms.tasks.OnCompleteListener
-import com.google.android.gms.tasks.Task
-import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
 
 import kotlinx.android.synthetic.main.activity_login.*
@@ -21,9 +17,9 @@ import org.jetbrains.anko.toast
  */
 class LoginActivity : AppCompatActivity() {
 
-    public var mAuth : FirebaseAuth? = null
+    private var mAuth : FirebaseAuth? = null
 
-    private val TAG = "LoginActivity"
+    private val tag = "LoginActivity"
 
     private var emailEmpty : Boolean = true
     private var pwEmpty : Boolean = true
@@ -45,12 +41,7 @@ class LoginActivity : AppCompatActivity() {
             }
 
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                if (email.text.toString().trim().length == 0) {
-                    emailEmpty = true
-                } else {
-                    emailEmpty = false
-                }
-
+                emailEmpty = email.text.isEmpty()
                 updateButtons()
             }
         })
@@ -65,31 +56,22 @@ class LoginActivity : AppCompatActivity() {
             }
 
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                if (password.text.toString().trim().length == 0) {
-                    pwEmpty = true
-                } else {
-                    pwEmpty = false
-                }
-
+                pwEmpty = password.text.isEmpty()
                 updateButtons()
             }
         })
 
-        email_sign_in_button.setOnClickListener(object : View.OnClickListener {
-            override fun onClick(v: View?) {
-                signInUser(email.text.toString(), password.text.toString())
-            }
-        })
+        email_sign_in_button.setOnClickListener {
+            signInUser(email.text.toString(), password.text.toString())
+        }
 
-        email_register_button.setOnClickListener(object : View.OnClickListener {
-            override fun onClick(v: View?) {
-                createUser(email.text.toString(), password.text.toString())
-            }
-        })
+        email_register_button.setOnClickListener {
+            createUser(email.text.toString(), password.text.toString())
+        }
 
         val currentUser = mAuth?.currentUser
         if (currentUser != null) {
-            Log.d(TAG, "User already logged in, moving on to main")
+            Log.d(tag, "User already logged in, moving on to main")
             startMain()
         }
     }
@@ -107,33 +89,29 @@ class LoginActivity : AppCompatActivity() {
 
     private fun createUser(email : String, password : String) {
         mAuth?.createUserWithEmailAndPassword(email, password)
-                ?.addOnCompleteListener(this, object : OnCompleteListener<AuthResult> {
-                    override fun onComplete(task : Task<AuthResult>) {
-                        if (task.isSuccessful) {
-                            Log.d(TAG, "[createUser]: Succesful")
+                ?.addOnCompleteListener {
+                        if (it.isSuccessful) {
+                            Log.d(tag, "[createUser]: Succesful")
                             toast("Account creation succesful")
                             startMain()
                         } else {
-                            Log.d(TAG, "[createUser]: Failed")
+                            Log.d(tag, "[createUser]: Failed")
                             toast("Account creation failed")
                         }
-                    }
-                })
+                }
     }
     private fun signInUser(email : String, password : String) {
         mAuth?.signInWithEmailAndPassword(email, password)
-                ?.addOnCompleteListener(this, object : OnCompleteListener<AuthResult> {
-                    override fun onComplete(task : Task<AuthResult>) {
-                       if (task.isSuccessful) {
-                           Log.d(TAG, "[signInUser]: Successful")
+                ?.addOnCompleteListener {
+                       if (it.isSuccessful) {
+                           Log.d(tag, "[signInUser]: Successful")
                            toast("Sign in successful!")
                            startMain()
                        } else {
-                           Log.d(TAG, "[signInUser]: Failed")
+                           Log.d(tag, "[signInUser]: Failed")
                            toast("Sign in failed")
                        }
-                    }
-                })
+                }
     }
 
     private fun startMain() {
@@ -147,14 +125,14 @@ class LoginActivity : AppCompatActivity() {
         // Might have received intent to log out here
         val extras = intent?.extras
         if (extras == null) {
-            Log.d(TAG, "[onResume] No extras in intent")
+            Log.d(tag, "[onResume] No extras in intent")
         } else {
             val shouldLogoutUser : Boolean = extras.getBoolean(LOGOUT_FLAG, false)
             if (shouldLogoutUser) {
-                Log.d(TAG, "[onResume] Logging out the user")
+                Log.d(tag, "[onResume] Logging out the user")
                 mAuth?.signOut()
             } else {
-                Log.d(TAG, "[onResume] Extras non-null but log out not requested")
+                Log.d(tag, "[onResume] Extras non-null but log out not requested")
             }
         }
     }
