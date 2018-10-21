@@ -1,6 +1,7 @@
 package com.coinzgame.theoxo.coinz
 
 import android.os.AsyncTask
+import android.util.Log
 import java.io.IOException
 import java.io.InputStream
 import java.net.HttpURLConnection
@@ -17,7 +18,7 @@ import java.net.URL
 class DownloadFileTask(private val caller : DownloadCompleteListener):
         AsyncTask<String, Void, String>() {
 
-    private val TAG = "DownloadFileTask"
+    private val tag = "DownloadFileTask"
 
     /**
      * The background task to perform; downloads the file specified by the first input.
@@ -53,6 +54,7 @@ class DownloadFileTask(private val caller : DownloadCompleteListener):
      */
     @Throws(IOException::class)
     private fun downloadUrl(urlString: String) : InputStream {
+        Log.d(tag, "[downloadUrl] Starting the HTTP connection.")
         val url = URL(urlString)
         val conn = url.openConnection() as HttpURLConnection
 

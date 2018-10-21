@@ -8,10 +8,6 @@ import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingEvent
 import java.util.ArrayList
 
-public const val LBM_LISTENER = "CoinEncountered"
-public const val LBM_ID_TAG = "IDs"
-public const val LBM_TYPE_TAG = "Type"
-
 /**
  * The [IntentService] which handles the [GeofencingEvent]s for the [Geofence]s on the map.
  * Obtains information about the event and broadcasts it back to [MainActivity] so that
@@ -19,7 +15,7 @@ public const val LBM_TYPE_TAG = "Type"
  */
 class GeofenceTransitionsIntentService : IntentService("GeofenceTransitionsIntentService") {
 
-    private val TAG = "GeoTransIntentService"
+    private val tag = "GeoTransIntentService"
 
     /**
      * Handler for the received [GeofencingEvent]s. Obtains information on the type of the
@@ -29,7 +25,7 @@ class GeofenceTransitionsIntentService : IntentService("GeofenceTransitionsInten
     override fun onHandleIntent(intent: Intent?) {
         val geofencingEvent = GeofencingEvent.fromIntent(intent)
         if (geofencingEvent.hasError()) {
-            Log.e(TAG, "[onHandleIntent] Error in intent: $geofencingEvent.errorCode")
+            Log.e(tag, "[onHandleIntent] Error in intent: $geofencingEvent.errorCode")
             return
         }
 
@@ -39,7 +35,7 @@ class GeofenceTransitionsIntentService : IntentService("GeofenceTransitionsInten
         val triggeringGeofences = geofencingEvent.triggeringGeofences
 
         // Intent to return
-        val lbmIntent : Intent = Intent(LBM_LISTENER)
+        val lbmIntent = Intent(LBM_LISTENER)
 
         // Test that the reported transition was of interest
         if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER
@@ -53,9 +49,9 @@ class GeofenceTransitionsIntentService : IntentService("GeofenceTransitionsInten
                 ids?.add(triggeringGeofence.requestId)
             }
             lbmIntent.putStringArrayListExtra(LBM_ID_TAG, ids)
-            Log.d(TAG, "[onHandleIntent] Interesting transition found")
+            Log.d(tag, "[onHandleIntent] Interesting transition found")
         } else {
-            Log.d(TAG, "Geofence event triggered but was not an interesting type")
+            Log.d(tag, "Geofence event triggered but was not an interesting type")
         }
 
         // Broadcast the gathered details back to the MainActivity

@@ -7,11 +7,17 @@ import android.support.design.widget.BottomNavigationView
 import android.view.MenuItem
 import kotlinx.android.synthetic.main.activity_account.*
 
-const val LOGOUT_FLAG = "LogOutCall"
-
+/**
+ * A simple screen allowing the user access to account-specific features such as signing out.
+ */
 class AccountActivity : AppCompatActivity(),
         BottomNavigationView.OnNavigationItemSelectedListener {
 
+    /**
+     * Sets up the screen and adds click events to the button(s).
+     *
+     * @param[savedInstanceState] the previously saved instance state, if it exists.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_account)
@@ -26,6 +32,11 @@ class AccountActivity : AppCompatActivity(),
         bottom_nav_bar.selectedItemId = R.id.account_nav
     }
 
+    /**
+     * Handles click events on the [BottomNavigationView], causing transitions to other activities.
+     *
+     * @param item the [MenuItem] which was clicked on the [BottomNavigationView]
+     */
     override fun onNavigationItemSelected(item : MenuItem): Boolean {
         when (item.itemId) {
             R.id.home_nav -> startMain()
@@ -35,12 +46,18 @@ class AccountActivity : AppCompatActivity(),
         return true
     }
 
+    /**
+     * Reorders the previous [MainActivity] back to the front.
+     */
     private fun startMain() {
         val intent = Intent(this, MainActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
         startActivity(intent)
     }
 
+    /**
+     * Reorders the previous [LoginActivity] to the front and requests that it signs out the user.
+     */
     private fun logOutUser() {
         val logoutIntent = Intent(this, LoginActivity::class.java)
         logoutIntent.flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT

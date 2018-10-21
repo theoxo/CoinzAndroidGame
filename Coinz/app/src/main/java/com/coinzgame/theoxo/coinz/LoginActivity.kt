@@ -13,17 +13,22 @@ import kotlinx.android.synthetic.main.activity_login.*
 import org.jetbrains.anko.toast
 
 /**
- * A login screen that offers login via email/password.
+ * A login screen that offers login via email/password, authenticating via Firebase.
  */
 class LoginActivity : AppCompatActivity() {
 
-    private var mAuth : FirebaseAuth? = null
-
     private val tag = "LoginActivity"
+
+    private var mAuth : FirebaseAuth? = null
 
     private var emailEmpty : Boolean = true
     private var pwEmpty : Boolean = true
 
+    /**
+     * Adds text and click listeners to the screen and sets [mAuth] to a [FirebaseAuth] instance.
+     *
+     * @param[savedInstanceState] the previously saved instance state, if it exists.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
@@ -69,6 +74,8 @@ class LoginActivity : AppCompatActivity() {
             createUser(email.text.toString(), password.text.toString())
         }
 
+        // Check if the user is already logged in (that is, has logged in on this device before
+        // without explicitly logging out)
         val currentUser = mAuth?.currentUser
         if (currentUser != null) {
             Log.d(tag, "User already logged in, moving on to main")
@@ -76,6 +83,11 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Enables and disables the "Sign in" and "Register" buttons depending on the text values.
+     * This is so that the [FirebaseAuth] methods do not throw errors due to the text values
+     * being null.
+     */
     private fun updateButtons() {
         if (!pwEmpty && !emailEmpty) {
             // If both textfields are non-empty, enable the buttons
@@ -87,6 +99,12 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Attempts to create a new user with the given login information.
+     *
+     * @param email The email account to use, as a [String]
+     * @param password The password to use for the account, as a [String]
+     */
     private fun createUser(email : String, password : String) {
         mAuth?.createUserWithEmailAndPassword(email, password)
                 ?.addOnCompleteListener {
@@ -96,10 +114,17 @@ class LoginActivity : AppCompatActivity() {
                             startMain()
                         } else {
                             Log.d(tag, "[createUser]: Failed")
-                            toast("Account creation failed")
+                            toast("Account creation failed. Are you already a registered user?")
                         }
                 }
     }
+
+    /**
+     * Attempts to sign in the user with the given account information.
+     *
+     * @param email the email corresponding to the account, as a [String]
+     * @param password the password to log in to the account with, as a [String]
+     */
     private fun signInUser(email : String, password : String) {
         mAuth?.signInWithEmailAndPassword(email, password)
                 ?.addOnCompleteListener {
@@ -109,16 +134,23 @@ class LoginActivity : AppCompatActivity() {
                            startMain()
                        } else {
                            Log.d(tag, "[signInUser]: Failed")
-                           toast("Sign in failed")
+                           toast("Sign in failed. Have you entered your details correctly?")
                        }
                 }
     }
 
+    /**
+     * Starts a new [MainActivity].
+     */
     private fun startMain() {
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
     }
 
+    /**
+     * If the user has requested to be logged out, sign them out of the [FirebaseAuth] instance.
+     * Otherwise, pass the intent on to the super function.
+     */
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
 
