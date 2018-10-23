@@ -15,6 +15,7 @@ import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingClient
 import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
+import com.google.firebase.firestore.*
 import com.google.gson.JsonObject
 import com.mapbox.android.core.location.LocationEngine
 import com.mapbox.android.core.location.LocationEngineListener
@@ -79,31 +80,41 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     // Keep track of which coins are within range
-    private lateinit var coinsInRange : HashSet<String>
-    private lateinit var coinIdToMarker : HashMap<String, Marker>
+    private lateinit var coinsInRange : MutableSet<String>
+    private lateinit var coinIdToMarker : MutableMap<String, Marker>
+    private lateinit var coinIdToJSON : MutableMap<String, JsonObject>
+
+    // Firebase Firestore database
+    private var firestore :  FirebaseFirestore? = null
+    private var firestoreWallet : DocumentReference? = null
+    private var currentUserEmail : String? = null
 
     /**
-     * First set up method called.
+     * Initializes the necessary instances and event handlers upon activity creation.
      * Gets the [MapView] instance and the [GeofencingClient]
-     * instance. Initializes the necessary fields, and invokes [setUpCollectButton] and
+     * instance. Initializes the necessary fields, and invokes [collectNearbyCoins] and
      * [setUpLocalBroadCastManager] to set up the click events and [BroadcastReceiver] for
-     * [Geofence] events.
+     * [Geofence] events. Finally, invokes [enableLocation].
      *
-     * @param[savedInstanceState] the previously saved instance state, if it exists.
+     * @param[savedInstanceState] the previously saved instance state, if it exists
      */
     override fun onCreate(savedInstanceState: Bundle?) {
 
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        currentUserEmail = intent?.getStringExtra(USER_EMAIL)
+        Log.d(tag, "[onCreate] Received user email $currentUserEmail")
+
         Mapbox.getInstance(this,
                 "***REMOVED***")
 
         coinsInRange = HashSet()
         coinIdToMarker = HashMap()
+        coinIdToJSON = HashMap()
 
         // Set up the click event for the button which allows the user to collect the coins
-        setUpCollectButton()
+        collectButton.setOnClickListener { _ -> collectNearbyCoins() }
 
         // Set up the broadcast manager which listens for Geofence events
         setUpLocalBroadCastManager()
@@ -111,11 +122,26 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         // Set up click events for bottom nav bar
         bottom_nav_bar.setOnNavigationItemSelectedListener(this)
 
-        geofencingClient = LocationServices.getGeofencingClient(this)
-        mapView = findViewById(R.id.mapView)
-        mapView?.onCreate(savedInstanceState)
+        // Set up Firestore
+        firestore = FirebaseFirestore.getInstance()
+        // Use com.google.firebase.Timestamp instead of java.util.Date
+        val settings = FirebaseFirestoreSettings.Builder()
+                .setTimestampsInSnapshotsEnabled(true)
+                .build()
+        firestore?.firestoreSettings = settings
 
-        enableLocation()
+        val emailTag : String? = currentUserEmail
+        if (emailTag == null) {
+            Log.e(tag, "[onCreate] Running with null user email")
+        } else {
+            firestoreWallet = firestore?.collection(emailTag)?.document(WALLET_DOCUMENT)
+
+            geofencingClient = LocationServices.getGeofencingClient(this)
+            mapView = findViewById(R.id.mapView)
+            mapView?.onCreate(savedInstanceState)
+
+            enableLocation()
+        }
     }
 
     /**
@@ -134,8 +160,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         mapView?.onStart()
 
         // Restore preferences
-        val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
-        lastDownloadDate = settings.getString("lastDownloadDate", null)
+        val storedPrefs = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
+        lastDownloadDate = storedPrefs.getString("lastDownloadDate", null)
         Log.d(tag, "[onStart] Fetched lastDownloadDate: $lastDownloadDate")
 
         // Need to get date in onStart() because app may have been left running overnight
@@ -159,9 +185,10 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
         if (currentDate == lastDownloadDate) {
             Log.d(tag, "[onStart] Dates match, fetching cached map")
-            cachedMap = settings.getString("cachedMap", null)
+            cachedMap = storedPrefs.getString("cachedMap", null)
             if (cachedMap == null) {
-                Log.w(tag, "[onStart] Dates matched but fetched cachedMap is null!")
+                Log.w(tag, "[onStart] Dates matched but fetched cachedMap is null! "
+                                + "Map will be downloaded.")
             } else {
                 Log.d(tag, "[onStart] Fetched cachedMap: ${cachedMap?.take(25)}")
             }
@@ -186,7 +213,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         mapView?.onStop()
 
         if (lastDownloadDate == currentDate) {
-            Log.d(tag, "[onStop] Not storing prefs as no change has been made")
+            Log.d(tag, "[onStop] Not storing date or map as no change has been made")
         } else {
             // Store preferences
             val settings: SharedPreferences = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
@@ -201,7 +228,6 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
             editor.apply()
         }
-
     }
 
     /**
@@ -286,93 +312,106 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
     /**
      * Adds the [Marker]s for the coins to the [MapboxMap] being displayed and sets up [Geofence]s.
+     * First check that the coin being added isn't already in the user's wallet (meaning it has
+     * already been collected).
      *
      * @param[geoJsonString] the downloaded GeoJSON (as a [String]) which describes the location of the coins
      */
     private fun addMarkers(geoJsonString : String) {
         geofenceList = ArrayList()
-        val geofenceRadius : Float = 25.toFloat()  // TODO unhack this maybe
+        val geofenceRadius: Float = 25.toFloat()  // TODO unhack this maybe
         val features = FeatureCollection.fromJson(geoJsonString).features()
 
         when {
             features == null -> {
-                Log.e(tag, "[downloadComplete] features is null")
+                Log.e(tag, "[addMarkers] features is null")
             }
 
             this.mapboxMap == null -> {
-                Log.e(tag, "[downloadComplete] mapboxMap is null, can't add markers")
+                Log.e(tag, "[addMarkers] mapboxMap is null, can't add markers")
             }
 
             else -> {
 
-                // features are non-null and mapboxMap is too. Can safely loop over the features,
+                // Features are non-null and mapboxMap is too. Can safely loop over the features,
                 // adding the markers to the map as we go along.
-                for (feature in features) {
 
-                    // Extract information from the feature
-                    val point: Point = feature.geometry() as Point
-                    val lat: Double = point.coordinates()[1]
-                    val long: Double = point.coordinates()[0]
-                    val properties: JsonObject? = feature.properties()
-                    val id: String? = properties?.get("id")?.asString
-                    val value: String? = properties?.get("value")?.asString
-                    val currency: String? = properties?.get("currency")?.asString
-                    //val symbol: String? = properties?.get("marker-symbol")?.asString
-                    //val colour: String? = properties?.get("marker-color")?.asString
+                // First, get snapshot of user wallet as it is
+                firestoreWallet?.get()?.run {
+                    addOnSuccessListener { docSnapshot ->
+                        // Getting the snapshot succeeded. Add the markers and geofences iff
+                        // they are not already in the snapshot (i.e. the user has collected
+                        // them before)
+                        for (feature in features) {
 
-                    // Add the marker
-                    val addedMarker : Marker? = this.mapboxMap?.addMarker(
-                            MarkerOptions()
-                                    .title("~${value?.substringBefore('.')} $currency.")
-                                    .snippet("Currency: $currency.\nValue: $value.")
-                                    .position(LatLng(lat, long)))
+                            // Extract information from the feature
+                            val point: Point = feature.geometry() as Point
+                            val lat: Double = point.coordinates()[1]
+                            val long: Double = point.coordinates()[0]
+                            val properties: JsonObject? = feature.properties()
+                            val id: String? = properties?.get("id")?.asString
+                            val value: String? = properties?.get("value")?.asString
+                            val currency: String? = properties?.get("currency")?.asString
+                            //val symbol: String? = properties?.get("marker-symbol")?.asString
+                            //val colour: String? = properties?.get("marker-color")?.asString
 
-                    if (addedMarker != null) {
-                        if (id != null) {
-                            // Ad id -> location to the hashmap so we can identify markers by
-                            // id later
-                            coinIdToMarker[id] = addedMarker
-                        } else {
-                            Log.e(tag, "[addMarkers] Successfully added marker but ID was null")
+                            when {
+                                id == null -> Log.e(tag, "[addMarkers] id of feature is null")
+                                currency == null -> Log.e(tag, "[addMarkers] currency of feature is null")
+                                else -> {
+                                    if (docSnapshot["$currency|$id"] == null) {
+                                        // Add the marker
+                                        val addedMarker: Marker? = mapboxMap?.addMarker(
+                                                MarkerOptions()
+                                                        .title("~${value?.substringBefore('.')} $currency.")
+                                                        .snippet("Currency: $currency.\nValue: $value.")
+                                                        .position(LatLng(lat, long)))
+
+                                        if (addedMarker != null) {
+                                            // Ad id -> location to the hashmap so we can identify markers by
+                                            // id later
+                                            coinIdToMarker[id] = addedMarker
+                                            coinIdToJSON[id] = properties
+                                        } else {
+                                            Log.e(tag, "[addMarkers] Failed to add marker")
+                                        }
+
+                                        // Add the corresponding Geofence.
+                                        geofenceList?.add(Geofence.Builder()
+                                                .setRequestId(id)
+                                                .setExpirationDuration(Geofence.NEVER_EXPIRE)
+                                                .setCircularRegion(
+                                                        lat,
+                                                        long,
+                                                        geofenceRadius)
+                                                .setTransitionTypes(
+                                                        Geofence.GEOFENCE_TRANSITION_ENTER
+                                                                or Geofence.GEOFENCE_TRANSITION_EXIT)
+                                                .build())
+                                    }
+                                }
+                            }
                         }
-                    } else {
-                        Log.e(tag, "[addMarkers] addedMarker is null; FAILED to add marker?")
-                    }
 
+                        // Have added all the geofences and markers, now add listener events for them
+                        val geofencingRequest: GeofencingRequest = GeofencingRequest.Builder().apply {
+                            setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
+                            addGeofences(geofenceList)
+                        }.build()
 
-                    // Add the corresponding Geofence.
-                    geofenceList?.add(Geofence.Builder()
-                            .setRequestId(id)
-                            .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                            .setCircularRegion(
-                                    lat,
-                                    long,
-                                    geofenceRadius)
-                            .setTransitionTypes(
-                                    Geofence.GEOFENCE_TRANSITION_ENTER
-                                            or Geofence.GEOFENCE_TRANSITION_EXIT)
-                            .build())
-                }
+                        geofencingClient?.addGeofences(geofencingRequest, geofencingPendingIntent)?.run {
+                            addOnSuccessListener {
+                                Log.d(tag, "[addGeofences] Sucessfully added the geofences")
+                            }
 
-                // Have added all the geofences and markers, now add listener events for them
-                val geofencingRequest: GeofencingRequest = GeofencingRequest.Builder().apply {
-                    setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
-                    addGeofences(geofenceList)
-                }.build()
-
-                geofencingClient?.addGeofences(geofencingRequest, geofencingPendingIntent)?.run {
-                    addOnSuccessListener {
-                        Log.d(tag, "[addGeofences] Sucessfully added the geofences")
-                    }
-
-                    addOnFailureListener {
-                        Log.e(tag, "[addGeofences] FAILED")
+                            addOnFailureListener {
+                                Log.e(tag, "[addGeofences] FAILED")
+                            }
+                        }
                     }
                 }
             }
-
         }
-
     }
 
     /**
@@ -530,48 +569,107 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     /**
-     * Sets up the click events for [collectButton].
-     * These click events correspond to picking up coins, and so [Marker]s and [Geofence]s are
-     * removed as is appropriate.
+     * Collects all the nearby coins by invoking [collectCoin] on them.
      */
-    private fun setUpCollectButton() {
-        // Set up click event for the button
-        collectButton.setOnClickListener { _ ->
+    private fun collectNearbyCoins() {
+        for (id in coinsInRange) {
+            val marker: Marker? = coinIdToMarker[id]
+            val coinProperties: JsonObject? = coinIdToJSON[id]
 
-            // Collect all the coins in range
-            var numRemovedCoins = 0
-            for (id in coinsInRange) {
-                val marker : Marker? = coinIdToMarker[id]
-                if (marker != null) {
-                    mapboxMap?.removeMarker(marker)
-                    Log.d(tag, "[collectButton.onClick] Removed marker with id $id")
-                    numRemovedCoins++
-                } else {
-                    Log.e(tag, "[collectButton.onClick] Could not find marker for id $id")
+            when {
+                coinProperties == null -> {
+                    Log.e(tag, "[collectNearbyCoins] coinProperties is null")
+                }
+                marker == null -> {
+                    Log.e(tag, "[collectNearbyCoins] marker is null")
+                }
+                else -> {
+                    collectCoin(coinProperties, id, marker)
                 }
             }
+        }
+    }
 
-            geofencingClient?.removeGeofences(ArrayList(coinsInRange))?.run {
-                addOnSuccessListener {
-                    Log.d(tag, "[collectButton.onClick][removeGeofences] Successful")
-                }
+    /**
+     * Collect a given coin, adding it to the user's wallet on Firestore.
+     * Then invokes [updateCollectButton] and [removeMarkerAndGeofence].
+     *
+     * @param coinProperties The properties of the given coin as as a [JsonObject]
+     * @param id The coin's id (a [String])
+     * @param marker The [Marker] corresponding to the coin
+     */
+    private fun collectCoin(coinProperties : JsonObject, id : String, marker : Marker) {
+        val value: String? = coinProperties.get("value")?.asString
+        val currency: String? = coinProperties.get("currency")?.asString
+        when {
+            value == null -> Log.e(tag,"[collectCoin] Value of coin is null")
+            currency == null -> Log.e(tag,
+                    "[collectCoin] Currency of coin is null")
+            else -> {
+                firestoreWallet?.get()?.run {
+                    addOnSuccessListener { docSnapshot ->
+                        val valueToSet = mapOf("$currency|$id" to value)
+                        if (docSnapshot.exists()) {
+                            // Doc exists, update values
+                            firestoreWallet?.update(valueToSet)?.run {
+                                        addOnSuccessListener {
+                                            Log.d(tag,
+                                                    "[collectCoin] Added coin $id of "
+                                                            + "currency $currency with value $value")
+                                            toast("Collected $value $currency")
+                                            coinsInRange.remove(id)
+                                            updateCollectButton()
+                                            removeMarkerAndGeofence(id, marker)
+                                        }
 
-                addOnFailureListener {
-                    Log.e(tag, "[collectButton.onClick][removeGeofences] FAILED")
+                                        addOnFailureListener { e ->
+                                            Log.e(tag, "[collectCoin] Doc exists but update failed: $e")
+                                        }
+                                    }
+                        } else {
+                            // Doc doesn't exist, create it
+                            Log.d(tag, "[collectCoin] Setting up new doc")
+                            firestoreWallet?.set(valueToSet)?.run {
+                                        addOnSuccessListener {
+                                            Log.d(tag,
+                                                    "[collectCoin] Added coin $id of currency "
+                                                            + "$currency with value $value to user's freshly created wallet")
+                                            toast("Collected $value $currency")
+                                            coinsInRange.remove(id)
+                                            updateCollectButton()
+                                            removeMarkerAndGeofence(id, marker)
+                                        }
+
+                                        addOnFailureListener { e ->
+                                            Log.e(tag, "[collectCoin] Failed to create doc $e")
+                                        }
+                                    }
+                        }
+                    }
+
+                    addOnFailureListener { e ->
+                        Log.e(tag, "[collectButton] Wallet get failed: $e")
+                    }
                 }
             }
+        }
+    }
 
-            // Once done looping over coinsInRange, reset it
-            coinsInRange = HashSet()
+    /**
+     * Removes a [Marker] and its corresponding [Geofence].
+     *
+     * @param id the ID of the Coin whose marker is being removed ([String])
+     * @param marker the [Marker] to remove
+     */
+    private fun removeMarkerAndGeofence(id : String, marker : Marker) {
+        geofencingClient?.removeGeofences(arrayListOf(id))?.run {
+            addOnSuccessListener {
+                mapboxMap?.removeMarker(marker)
+                Log.d(tag, "[removeMarkerAndGeofence] Successfully removed $id")
+            }
 
-            // Update the button text and visibility
-            updateCollectButton()
-
-            // Finally let the user know how many coins were collected
-            when (numRemovedCoins) {
-                0 -> Log.w(tag, "[collectButton.onClick] numRemoved coins is 0")
-                1 -> toast("Collected a coin")
-                else -> toast("Collected $numRemovedCoins coins")
+            addOnFailureListener { err ->
+                Log.e(tag, "[collectButton.onClick][removeGeofences] FAILED: $err")
             }
         }
     }

@@ -27,7 +27,7 @@ class LoginActivity : AppCompatActivity() {
     /**
      * Adds text and click listeners to the screen and sets [mAuth] to a [FirebaseAuth] instance.
      *
-     * @param[savedInstanceState] the previously saved instance state, if it exists.
+     * @param[savedInstanceState] the previously saved instance state, if it exists
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,7 +79,12 @@ class LoginActivity : AppCompatActivity() {
         val currentUser = mAuth?.currentUser
         if (currentUser != null) {
             Log.d(tag, "User already logged in, moving on to main")
-            startMain()
+            val email : String? = currentUser.email
+            if (email == null) {
+                Log.e(tag, "[onCreate] User is already logged in but email is null")
+            } else {
+                startMain(email)
+            }
         }
     }
 
@@ -111,7 +116,7 @@ class LoginActivity : AppCompatActivity() {
                         if (it.isSuccessful) {
                             Log.d(tag, "[createUser]: Succesful")
                             toast("Account creation succesful")
-                            startMain()
+                            startMain(email)
                         } else {
                             Log.d(tag, "[createUser]: Failed")
                             toast("Account creation failed. Are you already a registered user?")
@@ -131,7 +136,7 @@ class LoginActivity : AppCompatActivity() {
                        if (it.isSuccessful) {
                            Log.d(tag, "[signInUser]: Successful")
                            toast("Sign in successful!")
-                           startMain()
+                           startMain(email)
                        } else {
                            Log.d(tag, "[signInUser]: Failed")
                            toast("Sign in failed. Have you entered your details correctly?")
@@ -142,8 +147,9 @@ class LoginActivity : AppCompatActivity() {
     /**
      * Starts a new [MainActivity].
      */
-    private fun startMain() {
+    private fun startMain(email: String) {
         val intent = Intent(this, MainActivity::class.java)
+        intent.putExtra(USER_EMAIL, email)
         startActivity(intent)
     }
 

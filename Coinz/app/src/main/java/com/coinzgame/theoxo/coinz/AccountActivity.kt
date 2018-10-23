@@ -16,7 +16,7 @@ class AccountActivity : AppCompatActivity(),
     /**
      * Sets up the screen and adds click events to the button(s).
      *
-     * @param[savedInstanceState] the previously saved instance state, if it exists.
+     * @param[savedInstanceState] the previously saved instance state, if it exists
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

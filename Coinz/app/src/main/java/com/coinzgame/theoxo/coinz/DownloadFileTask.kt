@@ -8,10 +8,10 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * AsyncTask which downloads a file from a remote server using a HTTP connection, in this case
- * used to download the coin locations.
- * Upon finishing the task, invoke the caller's downloadComplete() method, passing the downloaded
- * data as a string.
+ * [AsyncTask] which downloads a file from a remote server using a [HttpURLConnection].
+ * In this case, used to download the coin locations.
+ * Upon finishing the task, invokes the caller's [DownloadCompleteListener.downloadComplete] method,
+ * passing the downloaded data as a string.
  *
  * @param[caller] the object implementing [DownloadCompleteListener] to send the results back to
  */
