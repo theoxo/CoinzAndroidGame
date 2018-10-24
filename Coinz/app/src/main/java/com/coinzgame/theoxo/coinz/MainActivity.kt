@@ -572,22 +572,39 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      * Collects all the nearby coins by invoking [collectCoin] on them.
      */
     private fun collectNearbyCoins() {
+        val coinsToAddToWallet : MutableMap<String, Any> = HashMap()
+        val markersToRemove : MutableMap<String, Marker> = HashMap()  // id is needed to remove geofences
         for (id in coinsInRange) {
             val marker: Marker? = coinIdToMarker[id]
             val coinProperties: JsonObject? = coinIdToJSON[id]
+            val value : String? = coinProperties?.get("value")?.asString
+            val currency : String? = coinProperties?.get("currency")?.asString
 
             when {
-                coinProperties == null -> {
-                    Log.e(tag, "[collectNearbyCoins] coinProperties is null")
+                value == null -> {
+                    Log.e(tag, "[collectNearbyCoins] Coin value is null")
+                }
+                currency == null -> {
+                    Log.e(tag, "[collectNearbyCoins] Coin currency is null")
                 }
                 marker == null -> {
                     Log.e(tag, "[collectNearbyCoins] marker is null")
                 }
                 else -> {
-                    collectCoin(coinProperties, id, marker)
+                    coinsToAddToWallet["$currency|$id"] = value
+                    markersToRemove[id] = marker
                 }
             }
         }
+
+        if (coinsToAddToWallet.size > 0) {
+            updateWallet(coinsToAddToWallet)
+        }
+        if (markersToRemove.size > 0) {
+            removeMarkersAndGeofences(markersToRemove)
+        }
+
+        coinsInRange.removeAll(coinsToAddToWallet.keys)
     }
 
     /**
@@ -598,59 +615,38 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      * @param id The coin's id (a [String])
      * @param marker The [Marker] corresponding to the coin
      */
-    private fun collectCoin(coinProperties : JsonObject, id : String, marker : Marker) {
-        val value: String? = coinProperties.get("value")?.asString
-        val currency: String? = coinProperties.get("currency")?.asString
-        when {
-            value == null -> Log.e(tag,"[collectCoin] Value of coin is null")
-            currency == null -> Log.e(tag,
-                    "[collectCoin] Currency of coin is null")
-            else -> {
-                firestoreWallet?.get()?.run {
-                    addOnSuccessListener { docSnapshot ->
-                        val valueToSet = mapOf("$currency|$id" to value)
-                        if (docSnapshot.exists()) {
-                            // Doc exists, update values
-                            firestoreWallet?.update(valueToSet)?.run {
-                                        addOnSuccessListener {
-                                            Log.d(tag,
-                                                    "[collectCoin] Added coin $id of "
-                                                            + "currency $currency with value $value")
-                                            toast("Collected $value $currency")
-                                            coinsInRange.remove(id)
-                                            updateCollectButton()
-                                            removeMarkerAndGeofence(id, marker)
-                                        }
-
-                                        addOnFailureListener { e ->
-                                            Log.e(tag, "[collectCoin] Doc exists but update failed: $e")
-                                        }
-                                    }
-                        } else {
-                            // Doc doesn't exist, create it
-                            Log.d(tag, "[collectCoin] Setting up new doc")
-                            firestoreWallet?.set(valueToSet)?.run {
-                                        addOnSuccessListener {
-                                            Log.d(tag,
-                                                    "[collectCoin] Added coin $id of currency "
-                                                            + "$currency with value $value to user's freshly created wallet")
-                                            toast("Collected $value $currency")
-                                            coinsInRange.remove(id)
-                                            updateCollectButton()
-                                            removeMarkerAndGeofence(id, marker)
-                                        }
-
-                                        addOnFailureListener { e ->
-                                            Log.e(tag, "[collectCoin] Failed to create doc $e")
-                                        }
-                                    }
+    private fun updateWallet(coins : MutableMap<String, Any>) {
+        firestoreWallet?.get()?.run {
+            addOnSuccessListener { docSnapshot ->
+                if (docSnapshot.exists()) {
+                    // Doc exists, update values
+                    firestoreWallet?.update(coins)?.run {
+                        addOnSuccessListener {
+                            Log.d(tag,
+                                    "[updateWallet] Succeeded with ${coins.size} coins")
+                            toast("Added ${coins.size} coin(s) to your wallet")
+                        }
+                        addOnFailureListener { e ->
+                            Log.e(tag, "[collectCoin] Doc exists but update failed: $e")
                         }
                     }
-
-                    addOnFailureListener { e ->
-                        Log.e(tag, "[collectButton] Wallet get failed: $e")
+                } else {
+                    // Doc doesn't exist, create it
+                    Log.d(tag, "[collectCoin] Setting up new doc")
+                    firestoreWallet?.set(coins)?.run {
+                        addOnSuccessListener {
+                            Log.d(tag,
+                                    "[collectCoin] Created wallet and set ${coins.size} coins")
+                            toast("Added ${coins.size} coin(s) to your wallet")
+                        }
+                        addOnFailureListener { e ->
+                            Log.e(tag, "[collectCoin] Failed to create doc: $e")
+                        }
                     }
                 }
+            }
+            addOnFailureListener { e ->
+                Log.e(tag, "[collectButton] Wallet get failed: $e")
             }
         }
     }
@@ -661,15 +657,21 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      * @param id the ID of the Coin whose marker is being removed ([String])
      * @param marker the [Marker] to remove
      */
-    private fun removeMarkerAndGeofence(id : String, marker : Marker) {
-        geofencingClient?.removeGeofences(arrayListOf(id))?.run {
+    private fun removeMarkersAndGeofences(coins : MutableMap<String, Marker>) {
+        geofencingClient?.removeGeofences(coins.keys.toList())?.run {
             addOnSuccessListener {
-                mapboxMap?.removeMarker(marker)
-                Log.d(tag, "[removeMarkerAndGeofence] Successfully removed $id")
+                Log.d(tag, "[removeMarkersAndGeofences] Successfully removed ${coins.size} geofences")
+                for ((id, marker) in coins) {
+                    mapboxMap?.removeMarker(marker)
+                    Log.d(tag, "[removeMarkersAndGeofences] Successfully removed marker of $id")
+                }
+
+                coinsInRange.removeAll(coins.keys)
+                updateCollectButton()
             }
 
             addOnFailureListener { err ->
-                Log.e(tag, "[collectButton.onClick][removeGeofences] FAILED: $err")
+                Log.e(tag, "[removeMarkersAndGeofences] Failed to remove geofences: $err")
             }
         }
     }
