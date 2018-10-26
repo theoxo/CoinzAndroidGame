@@ -1,5 +1,6 @@
 package com.coinzgame.theoxo.coinz
 
+import android.app.AlertDialog
 import android.app.PendingIntent
 import android.content.*
 import android.location.Location
@@ -23,6 +24,8 @@ import com.mapbox.geojson.Feature
 import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
 import com.mapbox.mapboxsdk.Mapbox
+import com.mapbox.mapboxsdk.annotations.Icon
+import com.mapbox.mapboxsdk.annotations.IconFactory
 import com.mapbox.mapboxsdk.annotations.Marker
 import com.mapbox.mapboxsdk.annotations.MarkerOptions
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory
@@ -33,8 +36,13 @@ import com.mapbox.mapboxsdk.maps.OnMapReadyCallback
 import com.mapbox.mapboxsdk.plugins.locationlayer.LocationLayerPlugin
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.CameraMode
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.RenderMode
+import kotlinx.android.synthetic.main.activity_login.*
 import kotlinx.android.synthetic.main.activity_main.*
+import org.jetbrains.anko.alert
+import org.jetbrains.anko.customView
 import org.jetbrains.anko.toast
+import org.json.JSONArray
+import org.json.JSONObject
 
 import java.util.*
 import kotlin.collections.ArrayList
@@ -61,6 +69,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     // Map variables
     private var mapView : MapView? = null
     private var mapboxMap : MapboxMap? = null
+    private val bankLocation : LatLng = LatLng(55.945459, -3.188707)
 
     // Downloaded data tracking
     private var currentDate : String? = null // FORMAT YYYY/MM/DD
@@ -78,6 +87,9 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     private var firestore :  FirebaseFirestore? = null
     private var firestoreWallet : DocumentReference? = null
     private var currentUserEmail : String? = null
+
+    // Today's rates
+    private var rates : JSONObject? = null
 
     /**
      * Initializes the necessary instances and event handlers upon activity creation.
@@ -302,6 +314,9 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      */
     private fun addMarkers(geoJsonString : String) {
         val features = FeatureCollection.fromJson(geoJsonString).features()
+        rates = JSONObject(geoJsonString).get("rates") as? JSONObject
+        Log.d(tag, "Rates: $rates")
+        val iconFactory = IconFactory.getInstance(this)
         when {
             features == null -> {
                 Log.e(tag, "[addMarkers] features is null")
@@ -361,6 +376,18 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                         }
                     }
                 }
+
+
+                val bankIcon : Icon = iconFactory.fromResource(R.mipmap.bank_drawable)
+
+                // Also want to add a special marker for the bank
+                val bank : Marker? = mapboxMap?.addMarker(
+                        MarkerOptions()
+                                .title("BANK")
+                                .snippet("The bank!")
+                                .position(bankLocation)
+                                .icon(bankIcon)
+                )
             }
         }
     }
@@ -380,6 +407,44 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         } else {
             this.mapboxMap = mapboxMap
             this.mapboxMap?.uiSettings?.isCompassEnabled = true
+            this.mapboxMap?.setOnMarkerClickListener { marker ->
+                if (marker.title == "BANK") {
+                    val bankmessage = "Hello and welcome to the bank!\n" +
+                                      "Today's exchange rates are:\n" +
+                                      "\t* DOLR to Gold: ${rates?.get("DOLR")}\n" +
+                                      "\t* PENY to Gold: ${rates?.get("PENY")}\n" +
+                                      "\t* SHIL to Gold: ${rates?.get("SHIL")}\n" +
+                                      "\t* QUID to Gold: ${rates?.get("QUID")}\n"
+
+                    val dialog = AlertDialog.Builder(this)
+                    val dialogView = layoutInflater.inflate(R.layout.banking_alert, null)
+                    dialog.setView(dialogView)
+                    dialog.show()
+
+                    /*alert{
+                        title = "Bank"
+                        message = bankmessage
+                        positiveButton("Cheers") {}
+
+                        val fromLat = bankLocation.latitude
+                        val fromLong = bankLocation.longitude
+                        val toLat = originLocation.latitude
+                        val toLong = originLocation.longitude
+                        val dist = flatEarthDist(fromLat, fromLong, toLat, toLong)
+
+                        //if (dist <= 25) {
+                            customView {
+                                layoutInflater.inflate(R.layout.activity_login, null)
+                            }
+
+                        //}
+                    }.show()*/
+                    true
+                }
+                else {
+                    false
+                }
+            }
 
             initializeLocationEngine()
             initializeLocationLayer()
@@ -525,6 +590,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
             val coinPoint : Point? = coinIdToFeature[coinID]?.geometry() as? Point
             val fromLat : Double? = coinPoint?.latitude()
             val fromLong : Double? = coinPoint?.longitude()
+
             val toLat : Double = location.latitude
             val toLong : Double = location.longitude
 
