@@ -11,10 +11,6 @@ import android.util.Log
 import android.view.MenuItem
 import android.view.View
 import com.coinzgame.theoxo.coinz.R.id.home_nav
-import com.google.android.gms.location.Geofence
-import com.google.android.gms.location.GeofencingClient
-import com.google.android.gms.location.GeofencingRequest
-import com.google.android.gms.location.LocationServices
 import com.google.firebase.firestore.*
 import com.google.gson.JsonObject
 import com.mapbox.android.core.location.LocationEngine
@@ -23,6 +19,7 @@ import com.mapbox.android.core.location.LocationEnginePriority
 import com.mapbox.android.core.location.LocationEngineProvider
 import com.mapbox.android.core.permissions.PermissionsListener
 import com.mapbox.android.core.permissions.PermissionsManager
+import com.mapbox.geojson.Feature
 import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
 import com.mapbox.mapboxsdk.Mapbox
@@ -71,18 +68,11 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     private var lastDownloadDate : String? = null
     private var cachedMap : String? = null
 
-    // Geofencing
-    private var geofencingClient : GeofencingClient? = null
-    private var geofenceList : ArrayList<Geofence>? = null
-    private val geofencingPendingIntent : PendingIntent by lazy {
-        val intent = Intent(this, GeofenceTransitionsIntentService::class.java)
-        PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
-    }
-
     // Keep track of which coins are within range
     private lateinit var coinsInRange : MutableSet<String>
+    // Keep track of data related to the coins
     private lateinit var coinIdToMarker : MutableMap<String, Marker>
-    private lateinit var coinIdToJSON : MutableMap<String, JsonObject>
+    private lateinit var coinIdToFeature : MutableMap<String, Feature>
 
     // Firebase Firestore database
     private var firestore :  FirebaseFirestore? = null
@@ -91,10 +81,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
     /**
      * Initializes the necessary instances and event handlers upon activity creation.
-     * Gets the [MapView] instance and the [GeofencingClient]
-     * instance. Initializes the necessary fields, and invokes [collectNearbyCoins] and
-     * [setUpLocalBroadCastManager] to set up the click events and [BroadcastReceiver] for
-     * [Geofence] events. Finally, invokes [enableLocation].
+     * Gets the [MapView] instance and and the [FirebaseFirestore] instance, sets up
+     * click events for the buttons in the activity and finally invokes [enableLocation]
      *
      * @param[savedInstanceState] the previously saved instance state, if it exists
      */
@@ -106,18 +94,14 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         currentUserEmail = intent?.getStringExtra(USER_EMAIL)
         Log.d(tag, "[onCreate] Received user email $currentUserEmail")
 
-        Mapbox.getInstance(this,
-                "***REMOVED***")
+        Mapbox.getInstance(this, MAPBOX_KEY)
 
         coinsInRange = HashSet()
         coinIdToMarker = HashMap()
-        coinIdToJSON = HashMap()
+        coinIdToFeature = HashMap()
 
         // Set up the click event for the button which allows the user to collect the coins
         collectButton.setOnClickListener { _ -> collectNearbyCoins() }
-
-        // Set up the broadcast manager which listens for Geofence events
-        setUpLocalBroadCastManager()
 
         // Set up click events for bottom nav bar
         bottom_nav_bar.setOnNavigationItemSelectedListener(this)
@@ -132,11 +116,10 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
         val emailTag : String? = currentUserEmail
         if (emailTag == null) {
-            Log.e(tag, "[onCreate] Running with null user email")
+            Log.e(tag, "[onCreate] null user email")
         } else {
             firestoreWallet = firestore?.collection(emailTag)?.document(WALLET_DOCUMENT)
 
-            geofencingClient = LocationServices.getGeofencingClient(this)
             mapView = findViewById(R.id.mapView)
             mapView?.onCreate(savedInstanceState)
 
@@ -311,17 +294,14 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     /**
-     * Adds the [Marker]s for the coins to the [MapboxMap] being displayed and sets up [Geofence]s.
+     * Adds the [Marker]s for the coins to the [MapboxMap] being displayed.
      * First check that the coin being added isn't already in the user's wallet (meaning it has
      * already been collected).
      *
-     * @param[geoJsonString] the downloaded GeoJSON (as a [String]) which describes the location of the coins
+     * @param[geoJsonString] The downloaded GeoJSON (as a [String]) which describes the location of the coins
      */
     private fun addMarkers(geoJsonString : String) {
-        geofenceList = ArrayList()
-        val geofenceRadius: Float = 25.toFloat()  // TODO unhack this maybe
         val features = FeatureCollection.fromJson(geoJsonString).features()
-
         when {
             features == null -> {
                 Log.e(tag, "[addMarkers] features is null")
@@ -346,8 +326,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
                             // Extract information from the feature
                             val point: Point = feature.geometry() as Point
-                            val lat: Double = point.coordinates()[1]
-                            val long: Double = point.coordinates()[0]
+                            val lat: Double = point.latitude()
+                            val long: Double = point.longitude()
                             val properties: JsonObject? = feature.properties()
                             val id: String? = properties?.get("id")?.asString
                             val value: String? = properties?.get("value")?.asString
@@ -360,7 +340,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                                 currency == null -> Log.e(tag, "[addMarkers] currency of feature is null")
                                 else -> {
                                     if (docSnapshot["$currency|$id"] == null) {
-                                        // Add the marker
+                                        // Add the marker if coin is not in wallet already
                                         val addedMarker: Marker? = mapboxMap?.addMarker(
                                                 MarkerOptions()
                                                         .title("~${value?.substringBefore('.')} $currency.")
@@ -368,44 +348,15 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                                                         .position(LatLng(lat, long)))
 
                                         if (addedMarker != null) {
-                                            // Ad id -> location to the hashmap so we can identify markers by
-                                            // id later
+                                            // Add ID -> Marker and ID -> Feature to the maps so
+                                            // we can identify and pick up nearby coins later
                                             coinIdToMarker[id] = addedMarker
-                                            coinIdToJSON[id] = properties
+                                            coinIdToFeature[id] = feature
                                         } else {
                                             Log.e(tag, "[addMarkers] Failed to add marker")
                                         }
-
-                                        // Add the corresponding Geofence.
-                                        geofenceList?.add(Geofence.Builder()
-                                                .setRequestId(id)
-                                                .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                                                .setCircularRegion(
-                                                        lat,
-                                                        long,
-                                                        geofenceRadius)
-                                                .setTransitionTypes(
-                                                        Geofence.GEOFENCE_TRANSITION_ENTER
-                                                                or Geofence.GEOFENCE_TRANSITION_EXIT)
-                                                .build())
                                     }
                                 }
-                            }
-                        }
-
-                        // Have added all the geofences and markers, now add listener events for them
-                        val geofencingRequest: GeofencingRequest = GeofencingRequest.Builder().apply {
-                            setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
-                            addGeofences(geofenceList)
-                        }.build()
-
-                        geofencingClient?.addGeofences(geofencingRequest, geofencingPendingIntent)?.run {
-                            addOnSuccessListener {
-                                Log.d(tag, "[addGeofences] Sucessfully added the geofences")
-                            }
-
-                            addOnFailureListener {
-                                Log.e(tag, "[addGeofences] FAILED")
                             }
                         }
                     }
@@ -549,6 +500,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
     /**
      * Listener for the user's [Location] changing, updating the recorded and displayed location.
+     * Also invokes [checkCoinsNearby]
      *
      * @param[location] the new [Location] found, or null
      */
@@ -556,9 +508,96 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         if (location != null) {
             originLocation = location
             setCameraPosition(location)
+            checkCoinsNearby(location)
         }
     }
 
+    /**
+     * Calculate distance between user and each coin on map, adding nearby ones to [coinsInRange].
+     * Currently "nearby" means ~25m, though the distance calculation is not exact.
+     * Invokes [updateCollectButton] before finishing to notify the user of newly added nearby
+     * coins.
+     * 
+     * @param location The user's current [Location]
+     */
+    private fun checkCoinsNearby(location : Location) {
+        for (coinID : String in coinIdToFeature.keys) {
+            val coinPoint : Point? = coinIdToFeature[coinID]?.geometry() as? Point
+            val fromLat : Double? = coinPoint?.latitude()
+            val fromLong : Double? = coinPoint?.longitude()
+            val toLat : Double = location.latitude
+            val toLong : Double = location.longitude
+
+            when {
+                fromLat == null -> Log.e(tag, "[onLocationChanged] Lat of $coinID is null")
+                fromLong == null -> Log.e(tag, "[onLocationChanged] Long of $coinID is null")
+                else -> {
+                    val dist = flatEarthDist(fromLat, toLat, fromLong, toLong)
+                    if (dist <= 25) {
+                        coinsInRange.add(coinID)
+                    }
+                }
+            }
+        }
+
+        // Update the collect button now that coinsInRange may have changed
+        updateCollectButton()
+    }
+
+    /**
+     * Approximates the distance between to latitude/longitude positions cheaply.
+     * Sourced from 
+     * https://stackoverflow.com/questions/3694380/calculating-distance-between-two-points-using-latitude-longitude-what-am-i-doi
+     * along with [distPerLat] and [distPerLong].
+     * 
+     * @param fromLat The latitude (as a [Double]) of the first point
+     * @param fromLong The longitude (as a [Double]) of the first point
+     * @param toLat The latitude (as a [Double]) of the second point
+     * @param toLong The longitude (as a [Double]) of the second point
+     * 
+     * @return The approximate distance between the points in meters ([Double])
+     */
+    private fun flatEarthDist(
+            fromLat : Double, toLat : Double, fromLong : Double, toLong : Double) : Double {
+        val a = (fromLat-toLat) * distPerLat(fromLat)
+        val b = (fromLong-toLong) * distPerLong(fromLat)
+        return Math.sqrt(a*a + b*b)
+    }
+
+    /**
+     * Calculates the approximate distance of "one latitude" at the given latitude.
+     * Sourced from
+     * https://stackoverflow.com/questions/3694380/calculating-distance-between-two-points-using-latitude-longitude-what-am-i-doi
+     * along with [distPerLong] and [flatEarthDist].
+     * 
+     * @param lat The current latitude ([Double])
+     * 
+     * @return The approximate length of "one latitude at [lat]", in metres ([Double])
+     */
+    private fun distPerLat(lat : Double) : Double {
+        return (-0.000000487305676*Math.pow(lat, 4.0)
+                -0.0033668574*Math.pow(lat, 3.0)
+                +0.4601181791*lat*lat
+                -1.4558127346*lat+110579.25662316)
+    }
+
+    /**
+     * Calculates the approximate distance of "one longitude" at the given latitude.
+     * Sourced from
+     * https://stackoverflow.com/questions/3694380/calculating-distance-between-two-points-using-latitude-longitude-what-am-i-doi
+     * along with [distPerLat] and [flatEarthDist].
+     *
+     * @param lat The current latitude ([Double])
+     *
+     * @return The approximate length of "one longitude at [lat]", in metres ([Double])
+     */
+    private fun distPerLong(lat : Double) : Double {
+        return (0.0003121092*Math.pow(lat, 4.0)
+                +0.0101182384*Math.pow(lat, 3.0)
+                -17.2385140059*lat*lat
+                +5.5485277537*lat+111301.967182595)
+    }
+    
     /**
      * Requests location updates from the [locationEngine] upon the activity being connected.
      */
@@ -569,14 +608,16 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     /**
-     * Collects all the nearby coins by invoking [collectCoin] on them.
+     * Collects all the nearby coins, i.e. those currently in [coinsInRange].
      */
     private fun collectNearbyCoins() {
         val coinsToAddToWallet : MutableMap<String, Any> = HashMap()
         val markersToRemove : MutableMap<String, Marker> = HashMap()  // id is needed to remove geofences
-        for (id in coinsInRange) {
+
+        val coins = coinsInRange
+        for (id in coins) {
             val marker: Marker? = coinIdToMarker[id]
-            val coinProperties: JsonObject? = coinIdToJSON[id]
+            val coinProperties: JsonObject? = coinIdToFeature[id]?.properties()
             val value : String? = coinProperties?.get("value")?.asString
             val currency : String? = coinProperties?.get("currency")?.asString
 
@@ -597,23 +638,26 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
             }
         }
 
+        // Note that we do not wait for the firestore update to complete successfully before
+        // removing the marker. This is safe because even if it fails the marker will simply
+        // be added to the map again the next time this activity is started, and so the user
+        // will be able to try again.
+        // This means we can remove the marker before waiting for the async call to the database
+        // to finish, making for a smoother user experience.
         if (coinsToAddToWallet.size > 0) {
             updateWallet(coinsToAddToWallet)
         }
+
         if (markersToRemove.size > 0) {
-            removeMarkersAndGeofences(markersToRemove)
+            removeMarkers(markersToRemove)
         }
 
-        coinsInRange.removeAll(coinsToAddToWallet.keys)
     }
 
     /**
-     * Collect a given coin, adding it to the user's wallet on Firestore.
-     * Then invokes [updateCollectButton] and [removeMarkerAndGeofence].
+     * Collect a given coin, adding it to the user's wallet on Firestore (i.e. [firestoreWallet]).
      *
-     * @param coinProperties The properties of the given coin as as a [JsonObject]
-     * @param id The coin's id (a [String])
-     * @param marker The [Marker] corresponding to the coin
+     * @param coins A [MutableMap] of "currency|id" -> value, i.e. the form expected by the database.
      */
     private fun updateWallet(coins : MutableMap<String, Any>) {
         firestoreWallet?.get()?.run {
@@ -627,20 +671,20 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                             toast("Added ${coins.size} coin(s) to your wallet")
                         }
                         addOnFailureListener { e ->
-                            Log.e(tag, "[collectCoin] Doc exists but update failed: $e")
+                            Log.e(tag, "[updateWallet] Doc exists but update failed: $e")
                         }
                     }
                 } else {
                     // Doc doesn't exist, create it
-                    Log.d(tag, "[collectCoin] Setting up new doc")
+                    Log.d(tag, "[updateWallet] Setting up new doc")
                     firestoreWallet?.set(coins)?.run {
                         addOnSuccessListener {
                             Log.d(tag,
-                                    "[collectCoin] Created wallet and set ${coins.size} coins")
+                                    "[updateWallet] Created wallet and set ${coins.size} coins")
                             toast("Added ${coins.size} coin(s) to your wallet")
                         }
                         addOnFailureListener { e ->
-                            Log.e(tag, "[collectCoin] Failed to create doc: $e")
+                            Log.e(tag, "[updateWallet] Failed to create doc: $e")
                         }
                     }
                 }
@@ -652,80 +696,23 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     /**
-     * Removes a [Marker] and its corresponding [Geofence].
+     * Removes the requested Markers from the map upon coin collection.
      *
-     * @param id the ID of the Coin whose marker is being removed ([String])
-     * @param marker the [Marker] to remove
+     * @param coins A [MutableMap] of "coin id -> marker" containing the markers to be removed
      */
-    private fun removeMarkersAndGeofences(coins : MutableMap<String, Marker>) {
-        geofencingClient?.removeGeofences(coins.keys.toList())?.run {
-            addOnSuccessListener {
-                Log.d(tag, "[removeMarkersAndGeofences] Successfully removed ${coins.size} geofences")
-                for ((id, marker) in coins) {
-                    mapboxMap?.removeMarker(marker)
-                    Log.d(tag, "[removeMarkersAndGeofences] Successfully removed marker of $id")
-                }
+    private fun removeMarkers(coins : MutableMap<String, Marker>) {
+        for ((id, marker) in coins) {
+            mapboxMap?.removeMarker(marker)
+            Log.d(tag, "[removeMarkers] Successfully removed marker of $id")
 
-                coinsInRange.removeAll(coins.keys)
-                updateCollectButton()
-            }
-
-            addOnFailureListener { err ->
-                Log.e(tag, "[removeMarkersAndGeofences] Failed to remove geofences: $err")
-            }
-        }
-    }
-
-    /**
-     * Sets up the [LocalBroadcastManager] which listens for [Geofence] events.
-     * This is so that the main thread can be notified about the type of [Geofence] transitions
-     * which occurred, adding and removing coins from [coinsInRange].
-     */
-    private fun setUpLocalBroadCastManager() {
-        // Settle up the broadcast managed and receiver to handle geofence transitions being
-        // passed back
-        val lbm : LocalBroadcastManager = LocalBroadcastManager.getInstance(this)
-        val receiver : BroadcastReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                // Handle the incoming message
-                Log.d(tag, "[onReceive] BroadcastReceiver has received an intent")
-
-                // Get the passed extras
-                val ids : ArrayList<String>? = intent?.getStringArrayListExtra(LBM_ID_TAG)
-                val type = intent?.getIntExtra(LBM_TYPE_TAG, -1)
-                Log.d(tag, "[onReceive] Type of intent received: $type")
-
-                // Either add or remove coins to set keeping track of what is in range,
-                // depending on the type of the transition seen
-                if (type == Geofence.GEOFENCE_TRANSITION_ENTER) {
-                    if (ids == null) {
-                        Log.e(tag, "[onReceive] GEOFENCE_TRANSITION_ENTER without any IDs")
-                    } else {
-                        for (id in ids) {
-                            Log.d(tag, "[onReceive] Adding id \"$id\" to coinsInRange")
-                            coinsInRange.add(id)
-                        }
-                    }
-                } else if (type == Geofence.GEOFENCE_TRANSITION_EXIT) {
-                    if (ids == null) {
-                        Log.e(tag, "[onReceive] GEOFENCE_TRANSITION_EXIT without any IDs")
-                    } else {
-                        for (id in ids) {
-                            Log.d(tag, "[onReceive] Removing id \"$id\" from coinsInRange")
-                            coinsInRange.remove(id)
-                        }
-                    }
-                } else {
-                    Log.w(tag, "[onReceive] Geofence transition type $type not expected")
-                }
-
-                updateCollectButton()
-            }
+            // Remove the coin id from the maps as it is no longer needed, and we do not want
+            // to check for its location again
+            coinIdToFeature.remove(id)
+            coinIdToMarker.remove(id)
         }
 
-        // Register the receiver to the manager
-        lbm.registerReceiver(receiver, IntentFilter(LBM_LISTENER))
+        coinsInRange.removeAll(coins.keys)
+        updateCollectButton()
     }
-
 }
 
