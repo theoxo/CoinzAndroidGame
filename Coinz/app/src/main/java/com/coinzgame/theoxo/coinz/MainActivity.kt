@@ -38,6 +38,7 @@ import com.mapbox.mapboxsdk.plugins.locationlayer.modes.CameraMode
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.RenderMode
 import kotlinx.android.synthetic.main.activity_login.*
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.banking_alert.*
 import org.jetbrains.anko.alert
 import org.jetbrains.anko.customView
 import org.jetbrains.anko.toast
@@ -409,36 +410,10 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
             this.mapboxMap?.uiSettings?.isCompassEnabled = true
             this.mapboxMap?.setOnMarkerClickListener { marker ->
                 if (marker.title == "BANK") {
-                    val bankmessage = "Hello and welcome to the bank!\n" +
-                                      "Today's exchange rates are:\n" +
-                                      "\t* DOLR to Gold: ${rates?.get("DOLR")}\n" +
-                                      "\t* PENY to Gold: ${rates?.get("PENY")}\n" +
-                                      "\t* SHIL to Gold: ${rates?.get("SHIL")}\n" +
-                                      "\t* QUID to Gold: ${rates?.get("QUID")}\n"
-
-                    val dialog = AlertDialog.Builder(this)
-                    val dialogView = layoutInflater.inflate(R.layout.banking_alert, null)
-                    dialog.setView(dialogView)
-                    dialog.show()
-
-                    /*alert{
-                        title = "Bank"
-                        message = bankmessage
-                        positiveButton("Cheers") {}
-
-                        val fromLat = bankLocation.latitude
-                        val fromLong = bankLocation.longitude
-                        val toLat = originLocation.latitude
-                        val toLong = originLocation.longitude
-                        val dist = flatEarthDist(fromLat, fromLong, toLat, toLong)
-
-                        //if (dist <= 25) {
-                            customView {
-                                layoutInflater.inflate(R.layout.activity_login, null)
-                            }
-
-                        //}
-                    }.show()*/
+                    val intent = Intent(this, BankActivity::class.java)
+                    intent.putExtra(USER_EMAIL, currentUserEmail)
+                    intent.putExtra(EXCHANGE_RATES, rates.toString())
+                    startActivity(intent)
                     true
                 }
                 else {

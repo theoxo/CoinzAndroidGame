@@ -15,4 +15,9 @@
     <string name="account_nav_button">Account</string>
     <string name="messaging_nav_button">Friends</string>
 
+    <!-- Strings related to the bank -->
+    <string name="bankText">
+        Hello and welcome to the bank!\nTo deposit coins, please choose a currency below:
+    </string>
+
 </resources>
