@@ -32,9 +32,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".AccountActivity" />
-        <activity android:name=".BankActivity"
-                  android:theme="@style/AppTheme.Dialog"></activity>
+        <activity
+            android:name=".AccountActivity"
+            android:theme="@style/AppTheme.NoActionBar" />
+        <activity
+            android:name=".BankActivity"
+            android:theme="@style/AppTheme.Dialog"
+            android:label="Bank"/>
+        <activity
+            android:name=".InboxActivity"
+            android:theme="@style/AppTheme.NoActionBar" />
+        <activity
+            android:name=".MailCreationActivity"
+            android:theme="@style/AppTheme.Dialog"
+            android:label="New Mail"/>
     </application>
 
 </manifest>

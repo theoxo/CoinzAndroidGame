@@ -258,6 +258,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     override fun onNavigationItemSelected(item : MenuItem): Boolean {
         when (item.itemId) {
             R.id.account_nav -> startAccountActivity()
+            R.id.messaging_nav -> startInboxActivity()
             else -> return true //do nothing
         }
         return true
@@ -268,6 +269,12 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      */
     private fun startAccountActivity() {
         val intent = Intent(this, AccountActivity::class.java)
+        startActivity(intent)
+    }
+
+    private fun startInboxActivity() {
+        val intent = Intent(this, InboxActivity::class.java)
+        intent.putExtra(USER_EMAIL, currentUserEmail)
         startActivity(intent)
     }
 

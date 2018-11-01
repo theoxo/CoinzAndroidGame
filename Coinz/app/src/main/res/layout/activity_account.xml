@@ -4,12 +4,14 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:theme="@style/Theme.AppCompat.NoActionBar"
     tools:context=".AccountActivity">
 
     <Button
         android:id="@+id/log_out_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:background="@color/colorPrimary"
         android:text="Log out"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -22,6 +24,9 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:visibility="visible"
+        android:background="@color/colorPrimary"
+        app:itemIconTint="@drawable/bottomnavigationviewselector"
+        app:itemTextColor="@drawable/bottomnavigationviewselector"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

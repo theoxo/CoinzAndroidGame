@@ -39,17 +39,24 @@ class AccountActivity : AppCompatActivity(),
      */
     override fun onNavigationItemSelected(item : MenuItem): Boolean {
         when (item.itemId) {
-            R.id.home_nav -> startMain()
+            R.id.home_nav -> startMainActivity()
+            //R.id.messaging_nav -> startInboxActivity()
             else -> return true //do nothing
         }
 
         return true
     }
 
+    // TODO
+    /*private fun startInboxActivity() {
+        val intent = Intent(this, InboxActivity::class.java)
+        intent.putExtra(USER_EMAIL, cur)
+    }*/
+
     /**
      * Reorders the previous [MainActivity] back to the front.
      */
-    private fun startMain() {
+    private fun startMainActivity() {
         val intent = Intent(this, MainActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
         startActivity(intent)

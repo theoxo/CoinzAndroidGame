@@ -1,58 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
 <android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:mapbox="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/coordinatorLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MainActivity">
-
+    android:theme="@style/AppTheme.NoActionBar"
+    tools:context=".InboxActivity">
 
     <Button
-        android:id="@+id/collectButton"
+        android:id="@+id/newEmailButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="5dp"
-        android:layout_marginEnd="8dp"
         android:layout_marginStart="8dp"
-        android:layout_marginTop="400dp"
-        android:text="Collect coin"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="@+id/mapView"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="8dp"
+        android:text="Send new mail"
+        android:background="@color/colorPrimary"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.502"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/mapView" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.067" />
 
-    <android.support.design.widget.AppBarLayout
-        android:id="@+id/appBarLayout"
+    <EditText
+        android:id="@+id/inboxText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:theme="@style/AppTheme.AppBarOverlay"
-        app:layout_constraintBottom_toTopOf="parent"
-        app:layout_constraintEnd_toStartOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
-
-    </android.support.design.widget.AppBarLayout>
-
-    <com.mapbox.mapboxsdk.maps.MapView
-        android:id="@+id/mapView"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:backgroundTint="@android:color/white"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="8dp"
+        android:ems="10"
+        android:inputType="none"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
+        android:longClickable="false"
+        android:text="Inbox"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.0"
-        mapbox:mapbox_cameraTargetLat="55.94444"
-        mapbox:mapbox_cameraTargetLng="-3.18888"
-        mapbox:mapbox_cameraZoom="16"
-        mapbox:mapbox_styleUrl="mapbox://styles/mapbox/streets-v10" >
+        app:layout_constraintTop_toBottomOf="@+id/newEmailButton"
+        app:layout_constraintVertical_bias="0.0" />
 
-    </com.mapbox.mapboxsdk.maps.MapView>
+    <ListView
+        android:id="@+id/inboxListView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:divider="@color/colorAccent"
+        android:dividerHeight="1dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/inboxText"
+        app:layout_constraintVertical_bias="0.0" />
 
     <android.support.design.widget.BottomNavigationView
         android:id="@+id/bottom_nav_bar"
