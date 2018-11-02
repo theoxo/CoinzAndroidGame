@@ -4,15 +4,12 @@ import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.util.SparseBooleanArray
-import android.widget.AbsListView.CHOICE_MODE_MULTIPLE
-import android.widget.ArrayAdapter
+import android.view.View
+import android.widget.AbsListView.*
 import com.google.firebase.firestore.DocumentReference
-import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 import kotlinx.android.synthetic.main.activity_bank.*
-import kotlinx.android.synthetic.main.list_item.*
-import org.jetbrains.anko.indeterminateProgressDialog
 import org.json.JSONObject
 
 class BankActivity : AppCompatActivity() {
@@ -20,21 +17,26 @@ class BankActivity : AppCompatActivity() {
     private val tag = "BankActivity"
 
     // Firebase Firestore database
-    private var firestore :  FirebaseFirestore? = null
+    private var firestore : FirebaseFirestore? = null
     private var firestoreWallet : DocumentReference? = null
     private var firestoreBank : DocumentReference? = null
+    private var firestoreInbox : DocumentReference? = null
     private var currentUserEmail : String? = null
 
     private var rates : JSONObject? = null
 
-    private var walletUpdateDone : Boolean = true
+    private var sourceUpdateDone : Boolean = true
     private var creditUpdateDone : Boolean = true
 
-    //private val progressDialog = indeterminateProgressDialog("Updating")
+    private var choiceIsWallet : Boolean = true
+
+    private var coinToMessage : MutableMap<Coin, Message>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_bank)
+
+        coinToMessage = HashMap()
 
         currentUserEmail = intent?.getStringExtra(USER_EMAIL)
         val ratesString = intent?.getStringExtra(EXCHANGE_RATES)
@@ -54,68 +56,129 @@ class BankActivity : AppCompatActivity() {
 
         depositButton.setOnClickListener { _ -> depositSelectedCoins()}
 
+        chooseWalletButton.setOnClickListener {
+            choiceIsWallet = true
+            switchToDepositMode()
+        }
+
+        chooseInboxButton.setOnClickListener {
+            choiceIsWallet = false
+            switchToDepositMode()
+        }
+
         bankTextView.text = ("Hello and welcome to the Bank!\n"
                             + "Today's rates are:\n"
                             + "\t* DOLR to Gold: ${rates?.get("DOLR")}\n"
                             + "\t* PENY to Gold: ${rates?.get("PENY")}\n"
                             + "\t* QUID to Gold: ${rates?.get("QUID")}\n"
                             + "\t* SHIL to Gold: ${rates?.get("SHIL")}\n")
+
         val emailTag : String? = currentUserEmail
         if (emailTag == null) {
             Log.e(tag, "[onCreate] null user email")
         } else {
             firestoreBank = firestore?.collection(emailTag)?.document(BANK_DOCUMENT)
             firestoreWallet = firestore?.collection(emailTag)?.document(WALLET_DOCUMENT)
+            firestoreInbox = firestore?.collection(emailTag)?.document(INBOX_DOCUMENT)
 
             updateListView()
         }
     }
 
+    private fun switchToDepositMode() {
+        chooseWalletButton.visibility = View.GONE
+        textView2.visibility = View.GONE
+        chooseInboxButton.visibility = View.GONE
+        coinsListView.visibility = View.VISIBLE
+        depositButton.visibility = View.VISIBLE
+        updateListView()
+    }
+
     private fun updateListView() {
-        firestoreWallet?.get()?.run {
+        val sourceChoiceIsWallet = choiceIsWallet
+        var source : DocumentReference? = null
+        if (sourceChoiceIsWallet) {
+            source = firestoreWallet
+        } else {
+            source = firestoreInbox
+        }
+        source?.get()?.run {
             addOnSuccessListener { docSnapshot ->
-                val walletSnapshot = docSnapshot.data?.toSortedMap()
-                if (walletSnapshot == null) {
-                    Log.w(tag, "[updateListView] walletSnapshot is null")
+                val sourceSnapshot = docSnapshot.data?.toMap()
+                if (sourceSnapshot == null) {
+                    Log.w(tag, "[updateListView] sourceSnapshot is null")
                 } else {
                     val items = ArrayList<Coin>()
-                    for ((key, value) in walletSnapshot) {
-                        val currency = key.substringBefore("|")
-                        val id = key.substringAfter("|")
-                        val coinValue = value as? String
-                        when (coinValue) {
-                            null -> {
-                                Log.e(tag, "[updateListView] coinValue of $currency $id is null")
-                            }
-                            COIN_DEPOSITED -> {
-                                // Skip this coin
-                            }
-                            else -> {
-                                val coin = Coin(id, currency, coinValue)
+                    if (sourceChoiceIsWallet) {
+                        for ((key, value) in sourceSnapshot) {
+
+                            val currency = key.substringBefore("|")
+                            val id = key.substringAfter("|")
+                            val coinValue = value as? String
+                            when (coinValue) {
+                                null -> {
+                                    Log.e(tag, "[updateListView] coinValue of $currency $id is null")
+                                }
+                                COIN_DEPOSITED -> {
+                                    // Skip this coin
+                                }
+                                else -> {
+                                    val coin = Coin(id, currency, coinValue)
                                     items.add(coin)
+                                }
+                            }
+                        }
+                    } else {
+                        // Otherwise the user has indicated that they want to use their inbox as
+                        // the source of coins, i.e. they want to deposit coins which have been
+                        // sent to them
+                        for ((_, messageAny) in sourceSnapshot) {
+                            val messageStr = messageAny.toString()
+                            val message = Message(JSONObject(messageStr))
+
+                            val attachedCoins = message.attachedCoins
+                            if (attachedCoins == null) {
+                                Log.d(tag, "[updateListView] No coins in message from "
+                                                 + "${message.senderEmail} at ${message.timestamp}")
+                            } else {
+                                attachedCoins.forEach { coin -> coinToMessage?.put(coin, message) }
+                                items.addAll(attachedCoins)
                             }
                         }
                     }
 
-                    val coinsAdapter = CoinsAdapter(this@BankActivity, items)
+                    // Sort coins descendently by value
+                    items.sortByDescending { coin -> coin.value }
+
+                    val coinsAdapter = CoinsAdapter(this@BankActivity, items, true)
                     coinsListView.choiceMode = CHOICE_MODE_MULTIPLE
                     coinsListView.adapter = coinsAdapter
                 }
             }
 
             addOnFailureListener { e ->
-                Log.e(tag, "[updateListView] Wallet get failed: $e")
+                Log.e(tag, "[updateListView] Source get failed: $e")
             }
         }
     }
 
     private fun depositSelectedCoins() {
 
+        val sourceModeIsWallet = choiceIsWallet
+
+        var source : DocumentReference? = null
+        if (sourceModeIsWallet) {
+            source = firestoreWallet
+        } else {
+            source = firestoreInbox
+        }
+
         // First of all disable the deposit button until we're done depositing
         depositButton.isEnabled = false
 
         var depositAmount = 0.0
-        val walletUpdate = HashMap<String, String>()
+        val sourceUpdate = HashMap<String, String>()
+        val chosenCoins = ArrayList<Coin>()
         val ticks : SparseBooleanArray = coinsListView.checkedItemPositions
         val listLength = coinsListView.count
         for (i in 0..listLength-1) {
@@ -145,8 +208,24 @@ class BankActivity : AppCompatActivity() {
                                          + "$currency is null")
                     }
                     else -> {
+                        chosenCoins.add(coin)
                         depositAmount += exchangeRate * value  // TODO is this the correct interpretation of exchangerate
-                        walletUpdate["$currency|$id"] = COIN_DEPOSITED
+                        if (sourceModeIsWallet) {
+                            sourceUpdate["$currency|$id"] = COIN_DEPOSITED
+                        } else {
+                            // Otherwise it is the inbox whose contents we want to update
+                            val message = coinToMessage?.get(coin)
+                            if (message == null) {
+                                Log.e(tag, "[depositSelectedCoins] Couldn't find message for "
+                                                 + "coin at $i")
+                            } else {
+                                val tag = message.getMessageTag()
+                                // Remove the coin from message
+                                message.removeCoin(coin)
+                                sourceUpdate[tag] = message.toJSONString()
+                            }
+                        }
+
                     }
                 }
             }
@@ -161,28 +240,33 @@ class BankActivity : AppCompatActivity() {
         // Update the deposited coin's values in the database to a special value
         // to indicate that they have been deposited (do not delete them to ensure they
         // are not added back to the map again)
-        if (!walletUpdate.isEmpty()) {
-            walletUpdateDone = false
-            updateWalletWithDepositedCoins(walletUpdate)
+        if (!sourceUpdate.isEmpty()) {
+            sourceUpdateDone = false
+            if (source == null) {
+                Log.e(tag, "[depositSelectedCoins] Want to update source but ref to it is null")
+            } else {
+                updateSourceWithDepositedCoins(source, sourceUpdate)
+            }
         }
 
     }
 
-    private fun updateWalletWithDepositedCoins(walletUpdate : Map<String, String>) {
-        firestoreWallet?.update(walletUpdate)?.run {
+    private fun updateSourceWithDepositedCoins(source : DocumentReference, sourceUpdate : Map<String, String>) {
+        source.update(sourceUpdate).run {
             addOnSuccessListener { _ ->
-                Log.d(tag, "[updateWalletWithDepositedCoins] Success with "
-                                 + "${walletUpdate.size} coins")
+                Log.d(tag, "[updateSourceWithDepositedCoins] Success with "
+                                 + "${sourceUpdate.size} items")
 
-                walletUpdateDone = true
+                sourceUpdateDone = true
                 enableFurtherDeposits()
             }
 
             addOnFailureListener { e ->
-                Log.e(tag, "[updateWalletWithDepositedCoins] Failed: $e")
+                Log.e(tag, "[updateSourceWithDepositedCoins] Failed: $e")
             }
         }
     }
+
     private fun addToUsersBank(depositAmount : Double) {
         firestoreBank?.get()?.run {
             addOnSuccessListener { docSnapshot ->
@@ -222,7 +306,7 @@ class BankActivity : AppCompatActivity() {
     }
 
     private fun enableFurtherDeposits() {
-        if (creditUpdateDone && walletUpdateDone) {
+        if (creditUpdateDone && sourceUpdateDone) {
             // If both credit update and wallet update succeeded, enable further
             // depositing redo the list view
             updateListView()

@@ -37,15 +37,18 @@
             android:theme="@style/AppTheme.NoActionBar" />
         <activity
             android:name=".BankActivity"
-            android:theme="@style/AppTheme.Dialog"
-            android:label="Bank"/>
+            android:label="Bank"
+            android:theme="@style/AppTheme.Dialog" />
         <activity
             android:name=".InboxActivity"
             android:theme="@style/AppTheme.NoActionBar" />
         <activity
             android:name=".MailCreationActivity"
+            android:label="New Mail"
+            android:theme="@style/AppTheme.Dialog" />
+        <activity android:name=".MailViewActivity"
             android:theme="@style/AppTheme.Dialog"
-            android:label="New Mail"/>
+            android:label="View Mail"/>
     </application>
 
 </manifest>
