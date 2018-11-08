@@ -11,12 +11,16 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.android.synthetic.main.activity_inbox.*
 import org.json.JSONObject
 
+/**
+ * A screen which shows the user their current inbox.
+ * Also allows them to move on to [MessageCreationActivity] so as to draft a new [Message].
+ */
 class InboxActivity : AppCompatActivity(),
                         BottomNavigationView.OnNavigationItemSelectedListener {
 
     private val tag = "InboxActivity"
 
-    // Firebase Firestore database
+    // Firebase Firestore database related local fields
     private var firestore : FirebaseFirestore? = null
     private var firestoreInbox : DocumentReference? = null
     private var currentUserEmail : String? = null

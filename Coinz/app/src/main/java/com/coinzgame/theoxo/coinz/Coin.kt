@@ -1,13 +1,10 @@
 package com.coinzgame.theoxo.coinz
 
-class Coin {
-    var id : String? = null
-    var currency : String? = null
-    var value : String? = null
-
-    constructor(id: String, currency: String, value: String) {
-        this.id = id
-        this.currency = currency
-        this.value = value
-    }
-}
+/**
+ * Represents a Coin in the game by specifying its parameters.
+ *
+ * @param id the unique identifer for the coin
+ * @param currency the currency of the coin
+ * @param value the coin's specified value
+ */
+class Coin (val id : String, val currency : String, val value : String){}

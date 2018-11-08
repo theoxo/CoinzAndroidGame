@@ -14,9 +14,9 @@ class AccountActivity : AppCompatActivity(),
         BottomNavigationView.OnNavigationItemSelectedListener {
 
     /**
-     * Sets up the screen and adds click events to the button(s).
+     * Sets up the activity and adds click events to the button(s).
      *
-     * @param[savedInstanceState] the previously saved instance state, if it exists
+     * @param savedInstanceState the previously saved instance state, if it exists
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

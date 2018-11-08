@@ -12,6 +12,10 @@ import com.google.firebase.firestore.FirebaseFirestoreSettings
 import kotlinx.android.synthetic.main.activity_bank.*
 import org.json.JSONObject
 
+/**
+ * The screen which allows the user to deposit their coins into the bank.
+ * Pops up when the user engages with the bank.
+ */
 class BankActivity : AppCompatActivity() {
 
     private val tag = "BankActivity"
@@ -32,6 +36,13 @@ class BankActivity : AppCompatActivity() {
 
     private var coinToMessage : MutableMap<Coin, Message>? = null
 
+    /**
+     * Sets up the local fields and invokes [updateListView].
+     * This includes getting the [currentUserEmail] from the intent
+     * and setting up the [firestore] related instances.
+     *
+     * @param[savedInstanceState] the previously saved instance state, if it exists
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_bank)
@@ -85,6 +96,9 @@ class BankActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Switches to deposit mode, hiding irrelevant elements and showing new ones.
+     */
     private fun switchToDepositMode() {
         chooseWalletButton.visibility = View.GONE
         textView2.visibility = View.GONE
@@ -94,6 +108,9 @@ class BankActivity : AppCompatActivity() {
         updateListView()
     }
 
+    /**
+     * Updates [coinsListView] with the latest user wallet info.
+     */
     private fun updateListView() {
         val sourceChoiceIsWallet = choiceIsWallet
         var source : DocumentReference? = null
@@ -162,6 +179,9 @@ class BankActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Deposits the currently selected coins in [coinsListView] to the user's bank.
+     */
     private fun depositSelectedCoins() {
 
         val sourceModeIsWallet = choiceIsWallet
@@ -251,6 +271,12 @@ class BankActivity : AppCompatActivity() {
 
     }
 
+    /**
+     * Updates the source of the coin (whether inbox or wallet) so as to remove the deposited coins.
+     *
+     * @param source the [DocumentReference] for the source the coin was retrieved from
+     * @param sourceUpdate a Map<String, String> with the data to set in the source
+     */
     private fun updateSourceWithDepositedCoins(source : DocumentReference, sourceUpdate : Map<String, String>) {
         source.update(sourceUpdate).run {
             addOnSuccessListener { _ ->
@@ -267,6 +293,11 @@ class BankActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Gets the user's current bank credit and adds the deposited amount to it.
+     *
+     * @param depositAmount the amount of GOLD that is being deposited
+     */
     private fun addToUsersBank(depositAmount : Double) {
         firestoreBank?.get()?.run {
             addOnSuccessListener { docSnapshot ->
@@ -289,6 +320,11 @@ class BankActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Sets the user's bank credit to the specified amount.
+     *
+     * @param credit the amount of GOLD (as a [Double]) to set the user's credit to.
+     */
     private fun setUsersBankCredit(credit : Double) {
         // Overwrites whatever credit is currently stored in the bank. Make sure this is
         // only called through addToUsersBank
@@ -305,6 +341,9 @@ class BankActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Invokes [updateListView] and re-enables the [depositButton] once the source is updated.
+     */
     private fun enableFurtherDeposits() {
         if (creditUpdateDone && sourceUpdateDone) {
             // If both credit update and wallet update succeeded, enable further

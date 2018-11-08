@@ -36,7 +36,6 @@ import com.mapbox.mapboxsdk.plugins.locationlayer.modes.RenderMode
 import kotlinx.android.synthetic.main.activity_main.*
 import org.jetbrains.anko.toast
 import org.json.JSONObject
-
 import java.util.*
 import kotlin.collections.HashMap
 import kotlin.collections.HashSet
@@ -694,7 +693,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     /**
-     * Collect a given coin, adding it to the user's wallet on Firestore (i.e. [firestoreWallet]).
+     * Update the user's wallet on Firestore (i.e. [firestoreWallet]) by adding the newly
+     * connected coins.
      *
      * @param coins A [MutableMap] of "currency|id" -> value, i.e. the form expected by the database.
      */
