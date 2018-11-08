@@ -1,12 +1,9 @@
 package com.coinzgame.theoxo.coinz
 
-import android.app.AlertDialog
-import android.app.PendingIntent
 import android.content.*
 import android.location.Location
 import android.os.Bundle
 import android.support.design.widget.BottomNavigationView
-import android.support.v4.content.LocalBroadcastManager
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.view.MenuItem
@@ -36,17 +33,11 @@ import com.mapbox.mapboxsdk.maps.OnMapReadyCallback
 import com.mapbox.mapboxsdk.plugins.locationlayer.LocationLayerPlugin
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.CameraMode
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.RenderMode
-import kotlinx.android.synthetic.main.activity_login.*
 import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.android.synthetic.main.banking_alert.*
-import org.jetbrains.anko.alert
-import org.jetbrains.anko.customView
 import org.jetbrains.anko.toast
-import org.json.JSONArray
 import org.json.JSONObject
 
 import java.util.*
-import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 import kotlin.collections.HashSet
 

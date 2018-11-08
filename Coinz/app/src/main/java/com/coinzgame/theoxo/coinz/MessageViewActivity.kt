@@ -6,9 +6,9 @@ import android.util.Log
 import kotlinx.android.synthetic.main.activity_mail_view.*
 import org.json.JSONObject
 
-class MailViewActivity : AppCompatActivity() {
+class MessageViewActivity : AppCompatActivity() {
 
-    private val tag = "MailViewActivity"
+    private val tag = "MessageViewActivity"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

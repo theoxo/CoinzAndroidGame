@@ -7,10 +7,9 @@ import android.text.TextWatcher
 import android.util.Log
 import android.widget.AbsListView
 import com.google.firebase.firestore.DocumentReference
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
-import kotlinx.android.synthetic.main.activity_mail_creation.*
+import kotlinx.android.synthetic.main.activity_message_creation.*
 import org.jetbrains.anko.toast
 import org.json.JSONObject
 import java.time.LocalDateTime
@@ -18,9 +17,9 @@ import java.util.*
 
 private var currentUserEmail : String? = null
 
-class MailCreationActivity : AppCompatActivity() {
+class MessageCreationActivity : AppCompatActivity() {
 
-    private val tag = "MailCreationActivity"
+    private val tag = "MessageCreationActivity"
 
     // Firebase Firestore database
     private var firestore :  FirebaseFirestore? = null
@@ -28,7 +27,7 @@ class MailCreationActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_mail_creation)
+        setContentView(R.layout.activity_message_creation)
 
         currentUserEmail = intent?.getStringExtra(USER_EMAIL)
 
@@ -235,7 +234,7 @@ class MailCreationActivity : AppCompatActivity() {
                         }
                     }
 
-                    val coinsAdapter = CoinsAdapter(this@MailCreationActivity, items, true)
+                    val coinsAdapter = CoinsAdapter(this@MessageCreationActivity, items, true)
                     coinsListView.choiceMode = AbsListView.CHOICE_MODE_MULTIPLE
                     coinsListView.adapter = coinsAdapter
                 }

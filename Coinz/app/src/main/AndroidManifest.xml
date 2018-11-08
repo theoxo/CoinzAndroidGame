@@ -43,12 +43,12 @@
             android:name=".InboxActivity"
             android:theme="@style/AppTheme.NoActionBar" />
         <activity
-            android:name=".MailCreationActivity"
-            android:label="New Mail"
+            android:name=".MessageCreationActivity"
+            android:label="New message"
             android:theme="@style/AppTheme.Dialog" />
-        <activity android:name=".MailViewActivity"
+        <activity android:name=".MessageViewActivity"
             android:theme="@style/AppTheme.Dialog"
-            android:label="View Mail"/>
+            android:label="View message"/>
     </application>
 
 </manifest>

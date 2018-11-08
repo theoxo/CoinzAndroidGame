@@ -27,14 +27,14 @@ class InboxActivity : AppCompatActivity(),
 
         currentUserEmail = intent?.getStringExtra(USER_EMAIL)
 
-        newEmailButton.setOnClickListener {_ -> startMailCreationActivity() }
+        newMessageButton.setOnClickListener {_ -> startmessageCreationActivity() }
         inboxListView.setOnItemClickListener { _, _, position, _ ->
             val message : Message? = inboxListView.getItemAtPosition(position) as? Message
             if (message == null) {
                 Log.e(tag, "[inboxListView.onItemClick] Could not cast item at $position to "
                                  + "Message")
             } else {
-                val intent = Intent(this, MailViewActivity::class.java)
+                val intent = Intent(this, MessageViewActivity::class.java)
                 intent.putExtra(MESSAGE_JSON_STRING, message.toJSONString())
                 startActivity(intent)
             }
@@ -57,8 +57,8 @@ class InboxActivity : AppCompatActivity(),
         }
     }
 
-    private fun startMailCreationActivity() {
-        val intent = Intent(this, MailCreationActivity::class.java)
+    private fun startmessageCreationActivity() {
+        val intent = Intent(this, MessageCreationActivity::class.java)
         intent.putExtra(USER_EMAIL, currentUserEmail)
         startActivity(intent)
     }

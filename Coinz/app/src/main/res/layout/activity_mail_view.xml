@@ -8,7 +8,7 @@
     android:maxHeight="400dp"
     android:minWidth="300dp"
     android:theme="@style/AppTheme.Dialog"
-    tools:context=".MailViewActivity">
+    tools:context=".MessageViewActivity">
 
     <TextView
         android:id="@+id/messageTextView"
