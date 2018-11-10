@@ -41,7 +41,7 @@ class BankActivity : AppCompatActivity() {
      * This includes getting the [currentUserEmail] from the intent
      * and setting up the [firestore] related instances.
      *
-     * @param[savedInstanceState] the previously saved instance state, if it exists
+     * @param savedInstanceState the previously saved instance state, if it exists.
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -113,7 +113,7 @@ class BankActivity : AppCompatActivity() {
      */
     private fun updateListView() {
         val sourceChoiceIsWallet = choiceIsWallet
-        var source : DocumentReference? = null
+        val source : DocumentReference?
         if (sourceChoiceIsWallet) {
             source = firestoreWallet
         } else {
@@ -167,7 +167,7 @@ class BankActivity : AppCompatActivity() {
                     // Sort coins descendently by value
                     items.sortByDescending { coin -> coin.value }
 
-                    val coinsAdapter = CoinsAdapter(this@BankActivity, items, true)
+                    val coinsAdapter = CoinAdapter(this@BankActivity, items, true)
                     coinsListView.choiceMode = CHOICE_MODE_MULTIPLE
                     coinsListView.adapter = coinsAdapter
                 }
@@ -186,7 +186,7 @@ class BankActivity : AppCompatActivity() {
 
         val sourceModeIsWallet = choiceIsWallet
 
-        var source : DocumentReference? = null
+        val source : DocumentReference?
         if (sourceModeIsWallet) {
             source = firestoreWallet
         } else {
@@ -274,8 +274,8 @@ class BankActivity : AppCompatActivity() {
     /**
      * Updates the source of the coin (whether inbox or wallet) so as to remove the deposited coins.
      *
-     * @param source the [DocumentReference] for the source the coin was retrieved from
-     * @param sourceUpdate a Map<String, String> with the data to set in the source
+     * @param source the document reference for the source the coin was retrieved from.
+     * @param sourceUpdate a map with the data to set in the source.
      */
     private fun updateSourceWithDepositedCoins(source : DocumentReference, sourceUpdate : Map<String, String>) {
         source.update(sourceUpdate).run {
@@ -296,7 +296,7 @@ class BankActivity : AppCompatActivity() {
     /**
      * Gets the user's current bank credit and adds the deposited amount to it.
      *
-     * @param depositAmount the amount of GOLD that is being deposited
+     * @param depositAmount the amount of GOLD that is being deposited.
      */
     private fun addToUsersBank(depositAmount : Double) {
         firestoreBank?.get()?.run {
@@ -323,7 +323,7 @@ class BankActivity : AppCompatActivity() {
     /**
      * Sets the user's bank credit to the specified amount.
      *
-     * @param credit the amount of GOLD (as a [Double]) to set the user's credit to.
+     * @param credit the amount of GOLD to set the user's credit to.
      */
     private fun setUsersBankCredit(credit : Double) {
         // Overwrites whatever credit is currently stored in the bank. Make sure this is

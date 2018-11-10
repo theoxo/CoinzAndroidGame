@@ -13,7 +13,7 @@ import java.net.URL
  * Upon finishing the task, invokes the caller's [DownloadCompleteListener.downloadComplete] method,
  * passing the downloaded data as a string.
  *
- * @param[caller] the object implementing [DownloadCompleteListener] to send the results back to
+ * @param[caller] the object implementing [DownloadCompleteListener] to send the results back to.
  */
 class DownloadFileTask(private val caller : DownloadCompleteListener):
         AsyncTask<String, Void, String>() {
@@ -23,9 +23,8 @@ class DownloadFileTask(private val caller : DownloadCompleteListener):
     /**
      * The background task to perform; downloads the data in the file specified.
      *
-     * @param urls one or more urls, the first of which is assumed to be the target
-     *
-     * @return a [String] of the data downloaded
+     * @param urls one or more urls, the first of which is assumed to be the target.
+     * @return a [String] of the data downloaded.
      */
     override fun doInBackground(vararg urls : String): String = try {
         loadFileFromNetwork(urls[0])
@@ -34,10 +33,10 @@ class DownloadFileTask(private val caller : DownloadCompleteListener):
     }
 
     /**
-     * Invokes downloading the file and transforms the resulting data into a [String]
+     * Invokes downloading the file and transforms the resulting data into a [String].
      *
-     * @param urlString the URL to download the data from
-     * @return the [String] representation of the downloaded data
+     * @param urlString the URL to download the data from.
+     * @return the [String] representation of the downloaded data.
      */
     private fun loadFileFromNetwork(urlString : String) : String {
         val stream : InputStream = downloadUrl(urlString)
@@ -49,8 +48,8 @@ class DownloadFileTask(private val caller : DownloadCompleteListener):
      * Sets up the HTTP connection and gets the [InputStream] for the file at the given URL.
      *
      * @throws IOException
-     * @param urlString the URL to download the data from
-     * @return the [InputStream] of the downloaded data
+     * @param urlString the URL to download the data from.
+     * @return the [InputStream] of the downloaded data.
      */
     @Throws(IOException::class)
     private fun downloadUrl(urlString: String) : InputStream {
@@ -71,7 +70,7 @@ class DownloadFileTask(private val caller : DownloadCompleteListener):
     /**
      * Listener for the task having finished. Sends the resulting string back to the caller.
      *
-     * @param result the resulting string built from the downloaded data
+     * @param result the resulting string built from the downloaded data.
      */
     override fun onPostExecute(result: String) {
         super.onPostExecute(result)

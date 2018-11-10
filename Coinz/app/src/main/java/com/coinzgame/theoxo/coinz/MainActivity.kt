@@ -84,10 +84,9 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
     /**
      * Initializes the necessary instances and event handlers upon activity creation.
-     * Gets the [MapView] instance and and the [FirebaseFirestore] instance, sets up
-     * click events for the buttons in the activity and finally invokes [enableLocation]
+     * Begins the process to set up the map and location tracking.
      *
-     * @param[savedInstanceState] the previously saved instance state, if it exists
+     * @param savedInstanceState the previously saved instance state, if it exists.
      */
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -131,12 +130,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     /**
-     * Upon activity start, invokes the activity's and [mapView]'s super functions.
-     * Also calculates [currentDate] and fetches the preferences stored on the device, notably the
-     * [lastDownloadDate] and [cachedMap] so that the coin locations do not need to be downloaded
-     * unnecessarily.
+     * Fetches the preferences stored on the device if necessary.
      */
-
     override fun onStart() {
         super.onStart()
 
@@ -165,7 +160,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
             // Pad to 0D format
             day = "0$day"
         }
-        // TODO make above nicer
+
         currentDate = "$year/$month/$day"
         Log.d(tag, "[onStart] Today's date: $currentDate")
 
@@ -181,18 +176,15 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         }
     }
 
-    /**
-     * On activity being resumed, invoke the super functions for the activity and [mapView].
-     */
     override fun onResume() {
         super.onResume()
         mapView?.onResume()
     }
 
     /**
-     * On stop, invoke the correct super functions (activity's and [mapView]'s) and save user prefs.
-     * The user preferences are stored on the device only if needed, namely if [lastDownloadDate]
-     * and [cachedMap] have changed since the last time they were stored.
+     * Saves the user preferences if needed.
+     * The user preferences are stored on the device only if [lastDownloadDate]
+     * has changed since the last time they were stored.
      */
     override fun onStop() {
         super.onStop()
@@ -216,25 +208,16 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         }
     }
 
-    /**
-     * Invokes the activity's and [mapView]'s super functions.
-     */
     override fun onLowMemory() {
         super.onLowMemory()
         mapView?.onLowMemory()
     }
 
-    /**
-     * Invokes the activity's and [mapView]'s super functions.
-     */
     override fun onDestroy() {
         super.onDestroy()
         mapView?.onDestroy()
     }
 
-    /**
-     * Invokes the activity's and [mapView]'s super functions.
-     */
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         mapView?.onSaveInstanceState(outState)
@@ -243,7 +226,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     /**
      * Handles user clicks on the [BottomNavigationView], starting the corresponding activities.
      *
-     * @param item The [MenuItem] clicked
+     * @param item the menu item clicked
      */
     override fun onNavigationItemSelected(item : MenuItem): Boolean {
         when (item.itemId) {
@@ -262,6 +245,9 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         startActivity(intent)
     }
 
+    /**
+     * Starts a new [InboxActivity].
+     */
     private fun startInboxActivity() {
         val intent = Intent(this, InboxActivity::class.java)
         intent.putExtra(USER_EMAIL, currentUserEmail)
@@ -292,9 +278,9 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
     /**
      * Listener for the AsyncTask marker map data download having finished.
-     * Calls addMarkers to add the markers to the map.
+     * Begins the process of adding the downloaded coins to the map.
      *
-     * @param[result] the downloaded GeoJSON [String] which describes the location of the coins
+     * @param result the downloaded GeoJSON which describes the location of the coins/
      */
     override fun downloadComplete(result: String) {
         cachedMap = result
@@ -305,10 +291,10 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
     /**
      * Adds the [Marker]s for the coins to the [MapboxMap] being displayed.
-     * First check that the coin being added isn't already in the user's wallet (meaning it has
+     * First checks that the coin being added isn't already in the user's wallet (meaning it has
      * already been collected).
      *
-     * @param[geoJsonString] The downloaded GeoJSON (as a [String]) which describes the location of the coins
+     * @param geoJsonString The downloaded GeoJSON which describes the location of the coins.
      */
     private fun addMarkers(geoJsonString : String) {
         val features = FeatureCollection.fromJson(geoJsonString).features()
@@ -386,6 +372,10 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                                 .position(bankLocation)
                                 .icon(bankIcon)
                 )
+
+                if (bank == null) {
+                    Log.e(tag, "[addMarkers] bank marker is null")
+                }
             }
         }
     }
@@ -397,7 +387,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      * Also invokes [initializeLocationLayer] and [initializeLocationEngine] which initialize
      * the location tracking.
      *
-     * @param mapboxMap the received [MapboxMap]
+     * @param mapboxMap the received mapbox map.
      */
     override fun onMapReady(mapboxMap: MapboxMap?) {
         if (mapboxMap == null) {
@@ -453,7 +443,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     /**
-     * Instantiates and sets up the [LocationEngine].
+     * Instantiates and sets up the [locationEngine].
      */
     @SuppressWarnings("MissingPermission")
     private fun initializeLocationEngine() {
@@ -475,7 +465,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     /**
-     * Instantiates and sets up the [LocationLayerPlugin].
+     * Instantiates and sets up the [locationLayerPlugin].
      */
     @SuppressWarnings("MissingPermission")
     private fun initializeLocationLayer() {
@@ -500,9 +490,9 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     /**
-     * Updates the current camera position for the displayed [MapboxMap].
+     * Updates the current camera position.
      *
-     * @param[location] the new [Location] to focus the camera on
+     * @param[location] the new location to focus the camera on.
      */
     private fun setCameraPosition(location : Location) {
         mapboxMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(
@@ -514,9 +504,10 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     /**
-     * Listener for location permission results. If granted, invokes [enableLocation].
+     * Listener for location permission results.
+     * If granted, invokes [enableLocation].
      *
-     * @param[granted] the truth value of the sentence "the permission was granted"
+     * @param granted whether the permission was granted.
      */
     override fun onPermissionResult(granted: Boolean) {
         if (granted) {
@@ -527,19 +518,15 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         }
     }
 
-    /**
-     * Simply passes the result on to the [permissionsManager].
-     */
-    // TODO understand this
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         permissionsManager.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
     /**
      * Listener for the user's [Location] changing, updating the recorded and displayed location.
-     * Also invokes [checkCoinsNearby]
+     * Also invokes [checkCoinsNearby].
      *
-     * @param[location] the new [Location] found, or null
+     * @param location the new location found, or null.
      */
     override fun onLocationChanged(location: Location?) {
         if (location != null) {
@@ -555,7 +542,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      * Invokes [updateCollectButton] before finishing to notify the user of newly added nearby
      * coins.
      * 
-     * @param location The user's current [Location]
+     * @param location The user's current location.
      */
     private fun checkCoinsNearby(location : Location) {
         for (coinID : String in coinIdToFeature.keys) {
@@ -588,12 +575,11 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      * https://stackoverflow.com/questions/3694380/calculating-distance-between-two-points-using-latitude-longitude-what-am-i-doi
      * along with [distPerLat] and [distPerLong].
      * 
-     * @param fromLat The latitude (as a [Double]) of the first point
-     * @param fromLong The longitude (as a [Double]) of the first point
-     * @param toLat The latitude (as a [Double]) of the second point
-     * @param toLong The longitude (as a [Double]) of the second point
-     * 
-     * @return The approximate distance between the points in meters ([Double])
+     * @param fromLat The latitude of the first point.
+     * @param fromLong The longitude of the first point.
+     * @param toLat The latitude of the second point.
+     * @param toLong The longitude of the second point.
+     * @return The approximate distance between the points in meters.
      */
     private fun flatEarthDist(
             fromLat : Double, toLat : Double, fromLong : Double, toLong : Double) : Double {
@@ -608,9 +594,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      * https://stackoverflow.com/questions/3694380/calculating-distance-between-two-points-using-latitude-longitude-what-am-i-doi
      * along with [distPerLong] and [flatEarthDist].
      * 
-     * @param lat The current latitude ([Double])
-     * 
-     * @return The approximate length of "one latitude at [lat]", in metres ([Double])
+     * @param lat The current latitude.
+     * @return The approximate length of "one latitude at [lat]", in metres.
      */
     private fun distPerLat(lat : Double) : Double {
         return (-0.000000487305676*Math.pow(lat, 4.0)
@@ -625,9 +610,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      * https://stackoverflow.com/questions/3694380/calculating-distance-between-two-points-using-latitude-longitude-what-am-i-doi
      * along with [distPerLat] and [flatEarthDist].
      *
-     * @param lat The current latitude ([Double])
-     *
-     * @return The approximate length of "one longitude at [lat]", in metres ([Double])
+     * @param lat The current latitude.
+     * @return The approximate length of "one longitude at [lat]", in metres.
      */
     private fun distPerLong(lat : Double) : Double {
         return (0.0003121092*Math.pow(lat, 4.0)
@@ -682,21 +666,20 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         // will be able to try again.
         // This means we can remove the marker before waiting for the async call to the database
         // to finish, making for a smoother user experience.
-        if (coinsToAddToWallet.size > 0) {
+        if (coinsToAddToWallet.isNotEmpty()) {
             updateWallet(coinsToAddToWallet)
         }
 
-        if (markersToRemove.size > 0) {
+        if (markersToRemove.isNotEmpty()) {
             removeMarkers(markersToRemove)
         }
 
     }
 
     /**
-     * Update the user's wallet on Firestore (i.e. [firestoreWallet]) by adding the newly
-     * connected coins.
+     * Update the user's wallet on Firestore by adding the newly connected coins.
      *
-     * @param coins A [MutableMap] of "currency|id" -> value, i.e. the form expected by the database.
+     * @param coins A map of "currency|id" -> value as expected by the database.
      */
     private fun updateWallet(coins : MutableMap<String, Any>) {
         firestoreWallet?.get()?.run {
@@ -735,9 +718,9 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     /**
-     * Removes the requested Markers from the map upon coin collection.
+     * Removes the requested [Marker]s from the map upon coin collection.
      *
-     * @param coins A [MutableMap] of "coin id -> marker" containing the markers to be removed
+     * @param coins A map of "coin id -> marker" containing the markers to be removed.
      */
     private fun removeMarkers(coins : MutableMap<String, Marker>) {
         for ((id, marker) in coins) {

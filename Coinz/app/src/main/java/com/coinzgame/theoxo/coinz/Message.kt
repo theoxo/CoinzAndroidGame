@@ -4,7 +4,17 @@ import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
 
-class Message {
+/**
+ * A class representing messages sent between users.
+ *
+ * @param messageJSON the JSON describing this message.
+ * @property timestamp the timestamp of this message.
+ * @property senderEmail the email of the user who sent the message.
+ * @property messageText the main text body of the message.
+ * @property attachedCoins the coins which are attached to the message.
+ * @constructor Sets up a message and its properties from the JSON given.
+ */
+class Message(messageJSON: JSONObject) {
 
     private val tag = "MessageClass"
 
@@ -13,14 +23,15 @@ class Message {
     var messageText : String? = null
     var attachedCoins : ArrayList<Coin>? = null
 
-    constructor(messageJSON :JSONObject) {
+
+    init {
         this.timestamp = messageJSON.get(TIMESTAMP).toString()
         this.senderEmail = messageJSON.get(SENDER).toString()
 
         this.attachedCoins = ArrayList()
         messageText = messageJSON.getString(MESSAGE_TEXT)
         val messageAttachments = JSONArray(messageJSON.getString(MESSAGE_ATTACHMENTS))
-        for (i in 0..messageAttachments.length()-1) {
+        for (i in 0 until messageAttachments.length()) {
             val attachment : JSONObject? = messageAttachments[i] as? JSONObject
             val currency : String? = attachment?.getString(CURRENCY)
             val value : String? = attachment?.getString(VALUE)
@@ -40,10 +51,20 @@ class Message {
     }
 
 
+    /**
+     * Gets a tag for the message which can be used to store it in the database.
+     *
+     * @return the tag generated.
+     */
     fun getMessageTag() : String {
         return "$timestamp|$senderEmail".replace('.', ':')
     }
 
+    /**
+     * Generates a JSON representation of the message.
+     *
+     * @return the JSON containing all the message's data.
+     */
     fun toJSONString() : String {
         val json = JSONObject()
         addSenderEmailToJSON(json)
@@ -54,10 +75,21 @@ class Message {
         return json.toString()
     }
 
+    /**
+     * Removes the requested coin from the message's list of attached coins.
+     *
+     * @param coin the coin to remove.
+     * @return whether the removal was successful.
+     */
     fun removeCoin(coin : Coin) : Boolean? {
         return attachedCoins?.remove(coin)
     }
 
+    /**
+     * Adds the message's [senderEmail] to the JSON object given.
+     *
+     * @param json the JSON object to add the email address to.
+     */
     private fun addSenderEmailToJSON(json: JSONObject) {
         val senderEmailCp = senderEmail
         if (senderEmailCp == null) {
@@ -67,6 +99,11 @@ class Message {
         }
     }
 
+    /**
+     * Adds the message's [timestamp] to the JSON object given.
+     *
+     * @param json the JSON object to add the timestamp to.
+     */
     private fun addTimestampToJSON(json: JSONObject) {
         val timestampCp = timestamp
         if (timestampCp == null) {
@@ -76,6 +113,11 @@ class Message {
         }
     }
 
+    /**
+     * Adds the message's [messageText] to the JSON object given.
+     *
+     * @param json the JSON object to add the message text to.
+     */
     private fun addMessageTextToJSON(json: JSONObject) {
         val messageTextCp = messageText
         if (messageTextCp == null) {
@@ -85,6 +127,11 @@ class Message {
         }
     }
 
+    /**
+     * Adds the message's [attachedCoins] to the JSON object given.
+     *
+     * @param json the JSON object to add the attached coins to.
+     */
     private fun addAttachedCoinsToJSON(json: JSONObject) {
         val attachedCoinsCp = attachedCoins
         if (attachedCoinsCp == null) {

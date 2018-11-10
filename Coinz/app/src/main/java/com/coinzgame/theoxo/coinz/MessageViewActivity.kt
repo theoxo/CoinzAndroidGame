@@ -6,10 +6,18 @@ import android.util.Log
 import kotlinx.android.synthetic.main.activity_mail_view.*
 import org.json.JSONObject
 
+/**
+ * A pop-up screen allowing the user to view a message in its inbox.
+ */
 class MessageViewActivity : AppCompatActivity() {
 
     private val tag = "MessageViewActivity"
 
+    /**
+     * Sets up the screen and fills it with the message info.
+     *
+     * @param savedInstanceState the previously saved instance state, if it exists.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_mail_view)
@@ -27,7 +35,7 @@ class MessageViewActivity : AppCompatActivity() {
         if (attachedCoins == null || attachedCoins.size == 0) {
             Log.d(tag, "[onCreate] No attached coins found")
         } else {
-            val attachedCoinsAdapter = CoinsAdapter(this, attachedCoins, false)
+            val attachedCoinsAdapter = CoinAdapter(this, attachedCoins, false)
             messageAttachedCoinsListView.adapter = attachedCoinsAdapter
         }
     }

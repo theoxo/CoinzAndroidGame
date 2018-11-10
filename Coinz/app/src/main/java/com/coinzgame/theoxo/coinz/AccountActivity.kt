@@ -16,7 +16,7 @@ class AccountActivity : AppCompatActivity(),
     /**
      * Sets up the activity and adds click events to the button(s).
      *
-     * @param savedInstanceState the previously saved instance state, if it exists
+     * @param savedInstanceState the previously saved instance state, if it exists.
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,7 +35,7 @@ class AccountActivity : AppCompatActivity(),
     /**
      * Handles click events on the [BottomNavigationView], causing transitions to other activities.
      *
-     * @param item the [MenuItem] which was clicked on the [BottomNavigationView]
+     * @param item the menu item which was clicked on the [BottomNavigationView].
      */
     override fun onNavigationItemSelected(item : MenuItem): Boolean {
         when (item.itemId) {

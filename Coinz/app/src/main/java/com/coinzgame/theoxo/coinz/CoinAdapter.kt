@@ -11,11 +11,11 @@ import android.widget.TextView
 /**
  * Provides a specialized [ArrayAdapter] to dynamically list [Coin]s in a list view.
  *
- * @param context the context which is invoking the adapter
- * @param coins the coins to put in the list
- * @param listIsMultiChoice whether the target list view is in multiple choice mode
+ * @param context the context which is invoking the adapter.
+ * @param coins the coins to put in the list.
+ * @param listIsMultipleChoice whether the target list view is in multiple choice mode.
  */
-class CoinsAdapter(context : Context, coins : ArrayList<Coin>, private var listIsMultiChoice : Boolean)
+class CoinAdapter(context : Context, coins : ArrayList<Coin>, private var listIsMultipleChoice : Boolean)
     : ArrayAdapter<Coin>(context, 0, coins) {
 
     private lateinit var view : View
@@ -27,7 +27,7 @@ class CoinsAdapter(context : Context, coins : ArrayList<Coin>, private var listI
             convertView != null -> {
                 view = convertView
             }
-            listIsMultiChoice -> {
+            listIsMultipleChoice -> {
                 view = LayoutInflater.from(context).inflate(R.layout.checked_list_item, parent, false)
             }
             else -> {
@@ -35,7 +35,7 @@ class CoinsAdapter(context : Context, coins : ArrayList<Coin>, private var listI
             }
         }
 
-        if (listIsMultiChoice) {
+        if (listIsMultipleChoice) {
             val tvItem = view.findViewById<CheckedTextView>(R.id.checkedListItemText)
             tvItem?.text = "${coin?.currency}: ${coin?.value?.take(5)}..."
         } else {

@@ -9,7 +9,7 @@ interface DownloadCompleteListener {
     /**
      * Handles the download having finished, dealing with the result appropriately.
      *
-     * @param result the downloaded data
+     * @param result the downloaded data.
      */
     fun downloadComplete(result: String)
 }

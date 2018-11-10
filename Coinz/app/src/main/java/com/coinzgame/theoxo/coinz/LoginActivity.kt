@@ -25,9 +25,9 @@ class LoginActivity : AppCompatActivity() {
     private var pwEmpty : Boolean = true
 
     /**
-     * Adds text and click listeners to the screen and sets [mAuth] to a [FirebaseAuth] instance.
+     * Adds text and click listeners to the screen and sets up the authentication service.
      *
-     * @param[savedInstanceState] the previously saved instance state, if it exists
+     * @param savedInstanceState the previously saved instance state, if it exists.
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -107,8 +107,8 @@ class LoginActivity : AppCompatActivity() {
     /**
      * Attempts to create a new user with the given login information.
      *
-     * @param email The email account to use, as a [String]
-     * @param password The password to use for the account, as a [String]
+     * @param email The email account to use to set up the account.
+     * @param password The password to use for the account.
      */
     private fun createUser(email : String, password : String) {
         mAuth?.createUserWithEmailAndPassword(email, password)
@@ -127,8 +127,8 @@ class LoginActivity : AppCompatActivity() {
     /**
      * Attempts to sign in the user with the given account information.
      *
-     * @param email the email corresponding to the account, as a [String]
-     * @param password the password to log in to the account with, as a [String]
+     * @param email the email corresponding to the account.
+     * @param password the password to log in to the account with.
      */
     private fun signInUser(email : String, password : String) {
         mAuth?.signInWithEmailAndPassword(email, password)

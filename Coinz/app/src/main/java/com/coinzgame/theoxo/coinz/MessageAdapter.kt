@@ -7,6 +7,13 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.TextView
 
+/**
+ * Provides a specialized [ArrayAdapter] to dynamically list [Message]s in a list view.
+ *
+ * @param context the context which is invoking the adapter.
+ * @param messages the messages to put in the list view.
+ */
+
 class MessageAdapter(context : Context, messages : ArrayList<Message>) : ArrayAdapter<Message>(context, 0, messages) {
 
     private lateinit var view : View

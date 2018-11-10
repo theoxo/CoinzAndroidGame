@@ -15,23 +15,32 @@ import org.json.JSONObject
 import java.time.LocalDateTime
 import java.util.*
 
-private var currentUserEmail : String? = null
 
+/**
+ * A pop-up screen which allows the user to craft and send a new [Message].
+ */
 class MessageCreationActivity : AppCompatActivity() {
 
     private val tag = "MessageCreationActivity"
+
+    private var currentUserEmail : String? = null
 
     // Firebase Firestore database
     private var firestore :  FirebaseFirestore? = null
     private var firestoreWallet : DocumentReference? = null
 
+    /**
+     * Sets up the screen, the [FirebaseFirestore] instance, and event listeners.
+     *
+     * @param savedInstanceState the previously saved instance state, if it exists.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_message_creation)
 
         currentUserEmail = intent?.getStringExtra(USER_EMAIL)
 
-        sendButton.setOnClickListener { _ -> generateMail() }
+        sendButton.setOnClickListener { _ -> generateMessage() }
 
         targetEmail.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
@@ -68,21 +77,24 @@ class MessageCreationActivity : AppCompatActivity() {
         }
     }
 
-    private fun generateMail() {
+    /**
+     * Generates a new message from the information input by the user and then calls [sendMessage].
+     */
+    private fun generateMessage() {
         val targetEmail : String = targetEmail.text.toString()
         val currentTime = LocalDateTime.now()
 
         if (currentUserEmail == null) {
-            Log.e(tag, "[generateMail] currentUserEmail is null")
+            Log.e(tag, "[generateMessage] currentUserEmail is null")
         } else {
 
-            val mailJSON = JSONObject()
+            val messageJSON = JSONObject()
             val addedCoins = ArrayList<JSONObject>()
             val sentCoinsDeletionMap = HashMap<String, String>()
 
             val ticks = coinsListView.checkedItemPositions
             val listViewLength = ticks.size()
-            for (i in 0..listViewLength-1) {
+            for (i in 0 until listViewLength) {
                 if (ticks[i]) {
                     // If the coin is ticked,
                     // add it to the email body
@@ -92,19 +104,19 @@ class MessageCreationActivity : AppCompatActivity() {
                     val id : String? = coin?.id
                     when {
                         coin == null -> {
-                            Log.e(tag, "[generateMail] Could not cast item at pos $i to coin")
+                            Log.e(tag, "[generateMessage] Could not cast item at pos $i to coin")
                         }
                         currency == null -> {
-                            Log.e(tag, "[generateMail] Coin at $i has null currency")
+                            Log.e(tag, "[generateMessage] Coin at $i has null currency")
                         }
                         value == null -> {
-                            Log.e(tag, "[generateMail] Null value for coin at $i")
+                            Log.e(tag, "[generateMessage] Null value for coin at $i")
                         }
                         id == null -> {
-                            Log.e(tag, "[generateMail] Null id for coin at $i")
+                            Log.e(tag, "[generateMessage] Null id for coin at $i")
                         }
                         else -> {
-                            Log.d(tag, "[generateMail] Adding $value $currency to the email")
+                            Log.d(tag, "[generateMessage] Adding $value $currency to the email")
                             val coinJSON = JSONObject()
                             coinJSON.put(CURRENCY, currency)
                             coinJSON.put(VALUE, value)
@@ -115,47 +127,55 @@ class MessageCreationActivity : AppCompatActivity() {
                 }
             }
 
-            mailJSON.put(MESSAGE_ATTACHMENTS, addedCoins)
-            mailJSON.put(MESSAGE_TEXT, message.text.toString())
-            mailJSON.put(SENDER, currentUserEmail)
-            mailJSON.put(TIMESTAMP, currentTime)
+            messageJSON.put(MESSAGE_ATTACHMENTS, addedCoins)
+            messageJSON.put(MESSAGE_TEXT, message.text.toString())
+            messageJSON.put(SENDER, currentUserEmail)
+            messageJSON.put(TIMESTAMP, currentTime)
 
-            val  generatedMessage = Message(mailJSON)
+            val  generatedMessage = Message(messageJSON)
 
             // Have generated the mail to send. Send it away!
-            sendMail(targetEmail, generatedMessage, sentCoinsDeletionMap)
+            sendMessage(targetEmail, generatedMessage, sentCoinsDeletionMap)
         }
     }
 
-    private fun sendMail(targetEmail : String, message : Message,
-                         sentCoinsDeletionMap : Map<String, String>) {
+    /**
+     * Sends the given message.
+     * Upon success, invokes [deleteSentCoinsFromUsersWallet].
+     *
+     * @param targetEmail the recipient's email.
+     * @param message the message to send to the target user.
+     * @param sentCoinsDeletionMap a map of the coins to mark as invalid in the user's wallet.
+     */
+    private fun sendMessage(targetEmail : String, message : Message,
+                            sentCoinsDeletionMap : Map<String, String>) {
 
-        val mailTag = message.getMessageTag()
-        val mailMap = mapOf(mailTag to message.toJSONString())
+        val messageTag = message.getMessageTag()
+        val messageMap = mapOf(messageTag to message.toJSONString())
         val targetCollection = firestore?.collection(targetEmail)
         targetCollection?.get()?.run {
             addOnSuccessListener { querySnapshot ->
                 val targetInbox: DocumentReference = targetCollection.document(INBOX_DOCUMENT)
                 if (querySnapshot.isEmpty) {
                     // Collection does not exist, i.e. the user is not registered in the system
-                    Log.w(tag, "[sendMail] The target user  $targetEmail is not registered")
+                    Log.w(tag, "[sendMessage] The target user  $targetEmail is not registered")
                     toast("Could not find user $targetEmail")
                 } else {
                     var mailBoxExists = false
                     for (docSnapshot in querySnapshot.documents) {
                         if (docSnapshot.reference == targetInbox) {
-                            Log.d(tag, "[sendMail] Found mailbox in user's collection")
+                            Log.d(tag, "[sendMessage] Found mailbox in user's collection")
 
                             // The target user has an existant inbox. Add this mail to it
-                            targetInbox.update(mailMap).run {
+                            targetInbox.update(messageMap).run {
                                 addOnSuccessListener {
-                                    Log.d(tag, "[sendMail] Added mail to existent mailbox")
+                                    Log.d(tag, "[sendMessage] Added mail to existent mailbox")
                                     toast("Mail sent")
                                     deleteSentCoinsFromUsersWallet(sentCoinsDeletionMap)
                                 }
 
                                 addOnFailureListener { e ->
-                                    Log.e(tag, "[sendMail] Failed at adding mail to existent "
+                                    Log.e(tag, "[sendMessage] Failed at adding mail to existent "
                                             + "mailbox: $e")
                                 }
                             }
@@ -171,15 +191,15 @@ class MessageCreationActivity : AppCompatActivity() {
                         // Have been unable to locate the mailbox in the target user's collection.
                         // Create it and set its contents to this message
                         // Target mailbox doesn't exist. Make it!
-                        targetInbox.set(mailMap).run {
+                        targetInbox.set(messageMap).run {
                             addOnSuccessListener {
-                                Log.d(tag, "[sendMail] Added mail to new mailbox")
+                                Log.d(tag, "[sendMessage] Added mail to new mailbox")
                                 toast("Mail sent")
                                 deleteSentCoinsFromUsersWallet(sentCoinsDeletionMap)
                             }
 
                             addOnFailureListener { e ->
-                                Log.e(tag, "[sendMail] Failed at adding mail to new "
+                                Log.e(tag, "[sendMessage] Failed at adding mail to new "
                                         + "mailbox: $e")
                             }
                         }
@@ -188,11 +208,16 @@ class MessageCreationActivity : AppCompatActivity() {
             }
 
             addOnFailureListener { e ->
-                Log.e(tag, "[sendMail] Target user's collection get failed: $e")
+                Log.e(tag, "[sendMessage] Target user's collection get failed: $e")
             }
         }
     }
 
+    /**
+     * Removes the coins sent away from the user's wallet and finishes the activity.
+     *
+     * @param sentCoinsDeletionMap a map of the coins to mark as invalid in the user's wallet.
+     */
     private fun deleteSentCoinsFromUsersWallet(sentCoinsDeletionMap: Map<String, String>) {
         firestoreWallet?.update(sentCoinsDeletionMap)?.run {
             addOnSuccessListener {
@@ -208,6 +233,9 @@ class MessageCreationActivity : AppCompatActivity() {
         finish()
     }
 
+    /**
+     * Updates the coin list view with the user's latest wallet info.
+     */
     private fun updateListView() {
         firestoreWallet?.get()?.run {
             addOnSuccessListener { docSnapshot ->
@@ -234,7 +262,8 @@ class MessageCreationActivity : AppCompatActivity() {
                         }
                     }
 
-                    val coinsAdapter = CoinsAdapter(this@MessageCreationActivity, items, true)
+                    val coinsAdapter = CoinAdapter(this@MessageCreationActivity, items,
+                                            true)
                     coinsListView.choiceMode = AbsListView.CHOICE_MODE_MULTIPLE
                     coinsListView.adapter = coinsAdapter
                 }
