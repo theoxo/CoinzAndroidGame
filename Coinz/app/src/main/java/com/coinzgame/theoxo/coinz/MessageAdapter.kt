@@ -16,16 +16,12 @@ import android.widget.TextView
 
 class MessageAdapter(context : Context, messages : ArrayList<Message>) : ArrayAdapter<Message>(context, 0, messages) {
 
-    private lateinit var view : View
-
     override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
         val message : Message? =  getItem(position)
 
-        if (convertView == null) {
-            view = LayoutInflater.from(context).inflate(R.layout.standard_list_item, parent, false)
-        } else {
-            view = convertView
-        }
+        val view : View = convertView ?:
+                          LayoutInflater.from(context).inflate(R.layout.standard_list_item,
+                                  parent, false)
 
         val tvItem = view.findViewById<TextView>(R.id.standardListItemText)
 

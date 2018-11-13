@@ -29,7 +29,7 @@ class DownloadFileTask(private val caller : DownloadCompleteListener):
     override fun doInBackground(vararg urls : String): String = try {
         loadFileFromNetwork(urls[0])
     } catch (ex: IOException) {
-        "Unable to load content, check network connection"
+        NETWORK_ERROR
     }
 
     /**

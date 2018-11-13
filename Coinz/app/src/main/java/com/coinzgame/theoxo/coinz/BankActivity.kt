@@ -113,12 +113,11 @@ class BankActivity : AppCompatActivity() {
      */
     private fun updateListView() {
         val sourceChoiceIsWallet = choiceIsWallet
-        val source : DocumentReference?
-        if (sourceChoiceIsWallet) {
-            source = firestoreWallet
-        } else {
-            source = firestoreInbox
+        val source : DocumentReference? = when (sourceChoiceIsWallet) {
+            true -> firestoreWallet
+            else -> firestoreInbox
         }
+
         source?.get()?.run {
             addOnSuccessListener { docSnapshot ->
                 val sourceSnapshot = docSnapshot.data?.toMap()
@@ -186,11 +185,10 @@ class BankActivity : AppCompatActivity() {
 
         val sourceModeIsWallet = choiceIsWallet
 
-        val source : DocumentReference?
-        if (sourceModeIsWallet) {
-            source = firestoreWallet
-        } else {
-            source = firestoreInbox
+        val sourceChoiceIsWallet = choiceIsWallet
+        val source : DocumentReference? = when (sourceChoiceIsWallet) {
+            true -> firestoreWallet
+            else -> firestoreInbox
         }
 
         // First of all disable the deposit button until we're done depositing
@@ -201,7 +199,7 @@ class BankActivity : AppCompatActivity() {
         val chosenCoins = ArrayList<Coin>()
         val ticks : SparseBooleanArray = coinsListView.checkedItemPositions
         val listLength = coinsListView.count
-        for (i in 0..listLength-1) {
+        for (i in 0 until listLength) {
             if (ticks[i]) {
                 // The item at this position is ticked. Deposit it
                 val coin : Coin? = coinsListView.getItemAtPosition(i) as? Coin

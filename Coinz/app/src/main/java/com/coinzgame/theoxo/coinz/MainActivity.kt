@@ -62,11 +62,11 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     private var mapboxMap : MapboxMap? = null
     private val bankLocation : LatLng = LatLng(55.945459, -3.188707)
 
-    // Downloaded data tracking
+    // Locally saved data tracking
     private var currentDate : String? = null // FORMAT YYYY/MM/DD
-    private val preferencesFile : String = "CoinzPrefsFile"
     private var lastDownloadDate : String? = null
     private var cachedMap : String? = null
+    private var ancientCoins = ArrayList<Feature>()
 
     // Keep track of which coins are within range
     private lateinit var coinsInRange : MutableSet<String>
@@ -141,7 +141,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         mapView?.onStart()
 
         // Restore preferences
-        val storedPrefs = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
+        val storedPrefs = getSharedPreferences(PREFERENCES_FILE, Context.MODE_PRIVATE)
         lastDownloadDate = storedPrefs.getString("lastDownloadDate", null)
         Log.d(tag, "[onStart] Fetched lastDownloadDate: $lastDownloadDate")
 
@@ -174,6 +174,31 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                 Log.d(tag, "[onStart] Fetched cachedMap: ${cachedMap?.take(25)}")
             }
         }
+
+        // Also get the current ancient coins
+        val ancientShilCoinString = storedPrefs.getString("Ancient SHIL coin", null)
+        if (ancientShilCoinString != null && ancientShilCoinString.isNotEmpty()) {
+            Log.d(tag, "[onStart] Found an ancient shil coin saved")
+            ancientCoins.add(Feature.fromJson(ancientShilCoinString))
+        }
+
+        val ancientQuidCoinString = storedPrefs.getString("Ancient QUID coin", null)
+        if (ancientQuidCoinString != null  && ancientQuidCoinString.isNotEmpty()) {
+            Log.d(tag, "[onStart] Found an ancient quid coin saved")
+            ancientCoins.add(Feature.fromJson(ancientQuidCoinString))
+        }
+
+        val ancientDolrCoinString = storedPrefs.getString("Ancient DOLR coin", null)
+        if (ancientDolrCoinString != null  && ancientDolrCoinString.isNotEmpty()) {
+            Log.d(tag, "[onStart] Found an ancient dolr coin saved")
+            ancientCoins.add(Feature.fromJson(ancientDolrCoinString))
+        }
+
+        val ancientPenyCoinString = storedPrefs.getString("Ancient PENY coin", null)
+        if (ancientPenyCoinString != null  && ancientPenyCoinString.isNotEmpty()) {
+            Log.d(tag, "[onStart] Found an ancient peny coin saved")
+            ancientCoins.add(Feature.fromJson(ancientPenyCoinString))
+        }
     }
 
     override fun onResume() {
@@ -191,10 +216,10 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         mapView?.onStop()
 
         if (lastDownloadDate == currentDate) {
-            Log.d(tag, "[onStop] Not storing date or map as no change has been made")
+            Log.d(tag, "[onStop] Not storing date or map")
         } else {
             // Store preferences
-            val settings: SharedPreferences = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
+            val settings: SharedPreferences = getSharedPreferences(PREFERENCES_FILE, Context.MODE_PRIVATE)
             val editor: SharedPreferences.Editor = settings.edit()
 
             Log.d(tag, "[onStop] Storing lastDownloadDate as currentDate: $currentDate")
@@ -283,10 +308,16 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      * @param result the downloaded GeoJSON which describes the location of the coins/
      */
     override fun downloadComplete(result: String) {
-        cachedMap = result
         val sneakpeak = result.take(25)
         Log.d(tag, "[downloadComplete] Result: $sneakpeak...")
-        addMarkers(result)
+
+        if (result == NETWORK_ERROR) {
+            toast(NETWORK_ERROR)
+            finish()
+        } else {
+            cachedMap = result  // store the cachedMap so we can save it onStop
+            addMarkers(result)
+        }
     }
 
     /**
@@ -297,7 +328,10 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      * @param geoJsonString The downloaded GeoJSON which describes the location of the coins.
      */
     private fun addMarkers(geoJsonString : String) {
-        val features = FeatureCollection.fromJson(geoJsonString).features()
+        val features : MutableList<Feature>? = FeatureCollection.fromJson(geoJsonString).features()
+        // Also add any and all currently active ancient coins
+        features?.addAll(ancientCoins)
+
         rates = JSONObject(geoJsonString).get("rates") as? JSONObject
         Log.d(tag, "Rates: $rates")
         val iconFactory = IconFactory.getInstance(this)
@@ -340,11 +374,21 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                                 else -> {
                                     if (docSnapshot["$currency|$id"] == null) {
                                         // Add the marker if coin is not in wallet already
+                                        val icon : Icon
+                                        if (id.startsWith("ANCIENT")) {
+                                            Log.d(tag, "[addMarkers] Found an ancient coin $id")
+                                            icon = IconFactory.getInstance(this@MainActivity)
+                                                    .fromResource(R.mipmap.star_drawable)
+                                        } else {
+                                            icon = IconFactory.getInstance(this@MainActivity)
+                                                    .defaultMarker()
+                                        }
                                         val addedMarker: Marker? = mapboxMap?.addMarker(
                                                 MarkerOptions()
                                                         .title("~${value?.substringBefore('.')} $currency.")
                                                         .snippet("Currency: $currency.\nValue: $value.")
-                                                        .position(LatLng(lat, long)))
+                                                        .position(LatLng(lat, long))
+                                                        .icon(icon))
 
                                         if (addedMarker != null) {
                                             // Add ID -> Marker and ID -> Feature to the maps so
@@ -419,6 +463,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                 DownloadFileTask(this).execute(dateString)
             } else {
                 Log.d(tag, "[onMapReady] Adding markers for cached map")
+                // TODO copy cached map instead of calling as !!
                 addMarkers(cachedMap!!)
             }
         }

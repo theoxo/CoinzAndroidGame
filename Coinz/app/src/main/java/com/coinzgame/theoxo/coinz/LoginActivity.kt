@@ -1,5 +1,6 @@
 package com.coinzgame.theoxo.coinz
 
+import android.content.Context
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 
@@ -72,6 +73,23 @@ class LoginActivity : AppCompatActivity() {
 
         email_register_button.setOnClickListener {
             createUser(email.text.toString(), password.text.toString())
+        }
+
+        // Check if this is the first time the app is being run on this device; if so,
+        // set up the alarms for ancient coin spawn timings.
+        val storedPrefs = getSharedPreferences(PREFERENCES_FILE, Context.MODE_PRIVATE)
+        if (!storedPrefs.getBoolean(FIRST_TIME_RUNNING, false)) {
+            Log.d(tag, "[onCreate] First time running the app")
+            val alarmSetupIntent = Intent()
+            alarmSetupIntent.action = FIRST_RUN_ACTION
+            sendBroadcast(alarmSetupIntent)
+
+            // Mark that it is no longer the first time this app is running.
+            val editor = storedPrefs.edit()
+            editor.putBoolean(FIRST_TIME_RUNNING, true)
+            editor.apply()
+        } else {
+            Log.d(tag, "[onCreate] Not first run of app")
         }
 
         // Check if the user is already logged in (that is, has logged in on this device before
