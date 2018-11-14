@@ -34,7 +34,7 @@ const val PREFERENCES_FILE = "CoinzPrefsFile"
 // Local saved data tags
 const val FIRST_TIME_RUNNING = "FirstRun"
 const val FIRST_RUN_ACTION = "FirstRunAction"
-const val LAST_DOWNLOAD_DATE = LAST_DOWNLOAD_DATE
+const val LAST_DOWNLOAD_DATE = "LastDownloadDate"
 const val SAVED_MAP_JSON = "SavedMapJson"
 
 // Network error tag
