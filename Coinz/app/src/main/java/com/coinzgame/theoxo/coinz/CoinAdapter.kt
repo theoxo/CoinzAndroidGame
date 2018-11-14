@@ -18,20 +18,18 @@ import android.widget.TextView
 class CoinAdapter(context : Context, coins : ArrayList<Coin>, private var listIsMultipleChoice : Boolean)
     : ArrayAdapter<Coin>(context, 0, coins) {
 
-    private lateinit var view : View
-
     override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
         val coin : Coin? =  getItem(position)
 
-        when {
+        val view : View = when {
             convertView != null -> {
-                view = convertView
+               convertView
             }
             listIsMultipleChoice -> {
-                view = LayoutInflater.from(context).inflate(R.layout.checked_list_item, parent, false)
+               LayoutInflater.from(context).inflate(R.layout.checked_list_item, parent, false)
             }
             else -> {
-                view = LayoutInflater.from(context).inflate(R.layout.standard_list_item, parent, false)
+                LayoutInflater.from(context).inflate(R.layout.standard_list_item, parent, false)
             }
         }
 
