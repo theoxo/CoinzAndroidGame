@@ -142,7 +142,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
         // Restore preferences
         val storedPrefs = getSharedPreferences(PREFERENCES_FILE, Context.MODE_PRIVATE)
-        lastDownloadDate = storedPrefs.getString("lastDownloadDate", null)
+        lastDownloadDate = storedPrefs.getString(LAST_DOWNLOAD_DATE, null)
         Log.d(tag, "[onStart] Fetched lastDownloadDate: $lastDownloadDate")
 
         // Need to get date in onStart() because app may have been left running overnight
@@ -166,7 +166,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
         if (currentDate == lastDownloadDate) {
             Log.d(tag, "[onStart] Dates match, fetching cached map")
-            cachedMap = storedPrefs.getString("cachedMap", null)
+            cachedMap = storedPrefs.getString(SAVED_MAP_JSON, null)
             if (cachedMap == null) {
                 Log.w(tag, "[onStart] Dates matched but fetched cachedMap is null! "
                                 + "Map will be downloaded.")
@@ -223,11 +223,11 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
             val editor: SharedPreferences.Editor = settings.edit()
 
             Log.d(tag, "[onStop] Storing lastDownloadDate as currentDate: $currentDate")
-            editor.putString("lastDownloadDate", currentDate)
+            editor.putString(LAST_DOWNLOAD_DATE, currentDate)
 
             val sneakpeak: String? = cachedMap?.take(25)
             Log.d(tag, "[onStop] Storing cachedMap: $sneakpeak...")
-            editor.putString("cachedMap", cachedMap)
+            editor.putString(SAVED_MAP_JSON, cachedMap)
 
             editor.apply()
         }

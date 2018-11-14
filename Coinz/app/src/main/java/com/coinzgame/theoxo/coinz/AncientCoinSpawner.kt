@@ -24,19 +24,46 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
     private val tag = "AncientCoinSpawner"
 
     private var context: Context? = null
+    private var currentDate: String? = null
 
     override fun downloadComplete(result: String) {
         val sneakpeak = result.take(25)
         Log.d(tag, "[downloadComplete] Result: $sneakpeak...")
 
+        // Copy the saved context and currentDate here for thread-safe behaviour
+        val thisContext = context
+        val thisDate = currentDate
+
         if (result == NETWORK_ERROR) {
             val title = "Coinz Network Error"
             val text = ("Ancient Coins will not be able to spawn before today's map is "
                         + "successfully downloaded.")
-            if (context != null) {
+            if (thisContext != null) {
+                // Let the user know that the download failed.
                 displayNotificationWithTitleAndText(title, text)
             }
         } else {
+            // We have successfully downloaded today's map. Update this in the local storage.
+            if (thisContext != null && thisDate != null) {
+
+                val storedPrefs = thisContext.getSharedPreferences(PREFERENCES_FILE,
+                        Context.MODE_PRIVATE)
+                val editor: SharedPreferences.Editor = storedPrefs.edit()
+                editor.putString(LAST_DOWNLOAD_DATE, thisDate)
+                editor.putString(SAVED_MAP_JSON, result)
+                editor.apply()
+
+                // We should also notify the user that the download was completed in the background.
+                val title = "Coinz Background Download"
+                val text = "Today's map has been downloaded onto your device."
+                displayNotificationWithTitleAndText(title, text)
+
+            } else {
+                Log.w(tag, "[downloadComplete] context or date is null. Map will have to be "
+                          + "downloaded again for the next alarm.")
+            }
+
+            // Finally, attempt to spawn ancient coins based on the download result
             spawnAncientCoins(result)
         }
     }
@@ -135,15 +162,15 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
                     // Pad to 0D format
                     day = "0$day"
                 }
-                val currentDate = "$year/$month/$day"
+                currentDate = "$year/$month/$day"
                 val storedPrefs = context.getSharedPreferences(PREFERENCES_FILE, Context.MODE_PRIVATE)
-                val cachedMap = storedPrefs.getString("cachedMap", null)
-                val lastDownloadDate = storedPrefs.getString("lastDownloadDate", "")
-                // TODO make the above safer and dynamic and probs store the result etc etc
+                val cachedMap = storedPrefs.getString(SAVED_MAP_JSON, null)
+                val lastDownloadDate = storedPrefs.getString(LAST_DOWNLOAD_DATE, "")
+
                 if (lastDownloadDate != currentDate || cachedMap == null) {
                     // The user has not yet downloaded the map for today.
                     // Do this in the background so we can spawn today's ancient coins.
-                    Log.e(tag, "[onReceive] cachedMap is null")
+                    Log.e(tag, "[onReceive] cachedMap is invalid. Downloading a new one")
                     // Begin the background download
                     val dateString = "http://homepages.inf.ed.ac.uk/stg/coinz/$currentDate/coinzmap.geojson"
                     DownloadFileTask(this).execute(dateString)
