@@ -3,6 +3,7 @@ package com.coinzgame.theoxo.coinz
 import android.content.*
 import android.location.Location
 import android.os.Bundle
+import android.os.CountDownTimer
 import android.support.design.widget.BottomNavigationView
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
@@ -39,6 +40,7 @@ import org.json.JSONObject
 import java.util.*
 import kotlin.collections.HashMap
 import kotlin.collections.HashSet
+import kotlin.math.roundToInt
 
 /**
  * The app's main Activity.
@@ -81,6 +83,11 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
     // Today's rates
     private var rates : JSONObject? = null
+
+    // Combo bonus feature objects
+    private var comboTimer: CountDownTimer? = null
+    private var comboTimeRemaining: Long? = null
+    private var comboFactor: Double? = null
 
     /**
      * Initializes the necessary instances and event handlers upon activity creation.
@@ -640,7 +647,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      * along with [distPerLong] and [flatEarthDist].
      * 
      * @param lat The current latitude.
-     * @return The approximate length of "one latitude at [lat]", in metres.
+     * @return The approximate length of one latitude at latitude [lat], in metres.
      */
     private fun distPerLat(lat : Double) : Double {
         return (-0.000000487305676*Math.pow(lat, 4.0)
@@ -656,7 +663,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      * along with [distPerLat] and [flatEarthDist].
      *
      * @param lat The current latitude.
-     * @return The approximate length of "one longitude at [lat]", in metres.
+     * @return The approximate length of one longitude at latitude [lat], in metres.
      */
     private fun distPerLong(lat : Double) : Double {
         return (0.0003121092*Math.pow(lat, 4.0)
@@ -679,13 +686,37 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      */
     private fun collectNearbyCoins() {
         val coinsToAddToWallet : MutableMap<String, Any> = HashMap()
-        val markersToRemove : MutableMap<String, Marker> = HashMap()  // id is needed to remove geofences
+        val markersToRemove : MutableMap<String, Marker> = HashMap()
 
         val coins = coinsInRange
+
+        // Copy the current combo for thread-safety
+        var localComboTimer = comboTimer
+        var localComboFactor = comboFactor
+        var localComboTimeRemaining = comboTimeRemaining
+
         for (id in coins) {
+            if (localComboTimer == null) {
+                // There is currently no timer active. Start one!
+                Log.d(tag, "[collectNearbyCoins] No combo active")
+                localComboTimeRemaining = 30000
+                localComboTimer = getComboTimerInstance(localComboTimeRemaining)
+            } else {
+                if (localComboTimeRemaining == null) {
+                    Log.e(tag, "[collectNearbyCoins] Combo timer is non-null but remaining time is")
+                } else {
+                    Log.d(tag, "[collectNearbyCoins] Combo found with comboTimer $localComboTimer"
+                            + ", time remaining $localComboTimeRemaining and factor $localComboFactor")
+                    // There's a combo active -- extend it by fifteen seconds!
+                    localComboTimer.cancel()
+                    localComboTimeRemaining = localComboTimeRemaining + 15000
+                    localComboTimer = getComboTimerInstance(localComboTimeRemaining)
+                }
+            }
+
             val marker: Marker? = coinIdToMarker[id]
             val coinProperties: JsonObject? = coinIdToFeature[id]?.properties()
-            val value : String? = coinProperties?.get("value")?.asString
+            var value : String? = coinProperties?.get("value")?.asString
             val currency : String? = coinProperties?.get("currency")?.asString
 
             when {
@@ -699,6 +730,14 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                     Log.e(tag, "[collectNearbyCoins] marker is null")
                 }
                 else -> {
+                    // Everything looks good. Check if there's a combo active
+                    if (localComboFactor == null) {
+                        // No combo currently on but one will have be started above.
+                        localComboFactor = 1.05
+                    } else {
+                        value = (value.toDouble() * localComboFactor).toString()
+                        localComboFactor = localComboFactor + 0.025
+                    }
                     coinsToAddToWallet["$currency|$id"] = value
                     markersToRemove[id] = marker
                 }
@@ -718,6 +757,16 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         if (markersToRemove.isNotEmpty()) {
             removeMarkers(markersToRemove)
         }
+
+        // Start the combo timer we've set up
+        comboTimer = localComboTimer
+        comboTimer?.start()
+        if (localComboFactor != null) {
+        comboFactorText.text = "${String.format("%.1f", (localComboFactor-1)*100)}%"
+        }
+        comboFactor = localComboFactor
+        comboTimerText.text = "$localComboTimeRemaining"
+
 
     }
 
@@ -781,5 +830,23 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         coinsInRange.removeAll(coins.keys)
         updateCollectButton()
     }
-}
 
+    private fun getComboTimerInstance(millisInFuture: Long) : CountDownTimer {
+        comboTimeRemaining = millisInFuture
+
+        return object : CountDownTimer(millisInFuture, 1000) {
+            override fun onTick(millisRemaining: Long) {
+                comboTimerText.text = "${(millisRemaining / 1000).toInt()}"
+                comboTimeRemaining = millisRemaining
+            }
+
+            override fun onFinish() {
+                comboTimerText.text = "No combo active"
+                comboFactorText.text = "No combo active"
+                comboTimeRemaining = null
+                comboTimer = null
+                comboFactor = null
+            }
+        }
+    }
+}
