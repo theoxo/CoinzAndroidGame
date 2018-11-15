@@ -33,13 +33,13 @@ class CoinAdapter(context : Context, coins : ArrayList<Coin>, private var listIs
             }
         }
 
-        if (listIsMultipleChoice) {
-            val tvItem = view.findViewById<CheckedTextView>(R.id.checkedListItemText)
-            tvItem?.text = "${coin?.currency}: ${coin?.value?.take(5)}..."
+        val tvItem = if (listIsMultipleChoice) {
+            view.findViewById<CheckedTextView>(R.id.checkedListItemText)
         } else {
-            val tvItem = view.findViewById<TextView>(R.id.standardListItemText)
-            tvItem?.text = "${coin?.currency}: ${coin?.value?.take(5)}..."
+            view.findViewById<TextView>(R.id.standardListItemText)
         }
+
+        tvItem?.text = "${coin?.currency}: ${String.format("%.3f", coin?.value)}..."
 
         return view
     }

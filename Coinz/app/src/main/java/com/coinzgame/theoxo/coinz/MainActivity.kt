@@ -40,7 +40,6 @@ import org.json.JSONObject
 import java.util.*
 import kotlin.collections.HashMap
 import kotlin.collections.HashSet
-import kotlin.math.roundToInt
 
 /**
  * The app's main Activity.
@@ -381,13 +380,12 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                                 else -> {
                                     if (docSnapshot["$currency|$id"] == null) {
                                         // Add the marker if coin is not in wallet already
-                                        val icon : Icon
-                                        if (id.startsWith("ANCIENT")) {
+                                        val icon : Icon = if (id.startsWith("ANCIENT")) {
                                             Log.d(tag, "[addMarkers] Found an ancient coin $id")
-                                            icon = IconFactory.getInstance(this@MainActivity)
+                                            IconFactory.getInstance(this@MainActivity)
                                                     .fromResource(R.mipmap.star_drawable)
                                         } else {
-                                            icon = IconFactory.getInstance(this@MainActivity)
+                                            IconFactory.getInstance(this@MainActivity)
                                                     .defaultMarker()
                                         }
                                         val addedMarker: Marker? = mapboxMap?.addMarker(
@@ -462,16 +460,18 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
             initializeLocationEngine()
             initializeLocationLayer()
 
+            // Copy cachedMap for thread safety
+            val localCachedMap: String? = cachedMap
             // Start download from here to make sure that the mapboxMap isn't null when
             // it's time to add markers
-            if (cachedMap == null) {
+            if (localCachedMap == null) {
+                // Will need to download the map first before adding the markers.
                 Log.d(tag, "[onMapReady] Downloading coins location map")
                 val dateString = "http://homepages.inf.ed.ac.uk/stg/coinz/$currentDate/coinzmap.geojson"
                 DownloadFileTask(this).execute(dateString)
             } else {
                 Log.d(tag, "[onMapReady] Adding markers for cached map")
-                // TODO copy cached map instead of calling as !!
-                addMarkers(cachedMap!!)
+                addMarkers(localCachedMap)
             }
         }
     }
@@ -521,17 +521,22 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      */
     @SuppressWarnings("MissingPermission")
     private fun initializeLocationLayer() {
+        // Copy the fields to ensure safe multithreading
+        val localMapView = mapView
+        val localMapBoxMap = mapboxMap
+        val localLocationEngine = locationEngine
         when {
-            mapView == null -> {
+            localMapView == null -> {
                 Log.d(tag, "[initializeLocationLayer] mapView is null")
             }
 
-            mapboxMap == null -> {
+            localMapBoxMap == null -> {
                 Log.d(tag, "[initializeLocationLayer] mapboxMap is null")
             }
 
             else -> {
-                locationLayerPlugin = LocationLayerPlugin(mapView!!, mapboxMap!!, locationEngine)
+                locationLayerPlugin = LocationLayerPlugin(
+                        localMapView, localMapBoxMap, localLocationEngine)
                 locationLayerPlugin.apply {
                     setLocationLayerEnabled(true)
                     cameraMode = CameraMode.TRACKING
@@ -709,14 +714,14 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                             + ", time remaining $localComboTimeRemaining and factor $localComboFactor")
                     // There's a combo active -- extend it by fifteen seconds!
                     localComboTimer.cancel()
-                    localComboTimeRemaining = localComboTimeRemaining + 15000
+                    localComboTimeRemaining += 15000
                     localComboTimer = getComboTimerInstance(localComboTimeRemaining)
                 }
             }
 
             val marker: Marker? = coinIdToMarker[id]
             val coinProperties: JsonObject? = coinIdToFeature[id]?.properties()
-            var value : String? = coinProperties?.get("value")?.asString
+            var value : Double? = coinProperties?.get("value")?.asDouble
             val currency : String? = coinProperties?.get("currency")?.asString
 
             when {
@@ -735,10 +740,11 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                         // No combo currently on but one will have be started above.
                         localComboFactor = 1.05
                     } else {
-                        value = (value.toDouble() * localComboFactor).toString()
-                        localComboFactor = localComboFactor + 0.025
+                        value *= localComboFactor
+                        localComboFactor += 0.025
                     }
-                    coinsToAddToWallet["$currency|$id"] = value
+                    val coinJson = Coin(id, currency, value).toJSON()
+                    coinsToAddToWallet["$currency|$id"] = coinJson.toString()
                     markersToRemove[id] = marker
                 }
             }
@@ -836,7 +842,12 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
         return object : CountDownTimer(millisInFuture, 1000) {
             override fun onTick(millisRemaining: Long) {
-                comboTimerText.text = "${(millisRemaining / 1000).toInt()}"
+                try {
+                   val timerText: Int = (millisRemaining / 1000).toInt()
+                   comboTimerText.text = "$timerText"
+                } catch (e: NumberFormatException) {
+                    Log.e(tag, "[getComboTimerInstance][onTick] Exception: $e")
+                }
                 comboTimeRemaining = millisRemaining
             }
 

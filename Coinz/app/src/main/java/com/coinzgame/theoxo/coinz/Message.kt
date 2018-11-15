@@ -34,7 +34,7 @@ class Message(messageJSON: JSONObject) {
         for (i in 0 until messageAttachments.length()) {
             val attachment : JSONObject? = messageAttachments[i] as? JSONObject
             val currency : String? = attachment?.getString(CURRENCY)
-            val value : String? = attachment?.getString(VALUE)
+            val value : Double? = attachment?.getDouble(VALUE)
             // Need an ID for the coin. Let's generate a unique one from the timestamp
             // and index in the message
             when {
@@ -140,30 +140,7 @@ class Message(messageJSON: JSONObject) {
             val coinJSONs = ArrayList<JSONObject>()
 
             for (coin: Coin in attachedCoinsCp) {
-                val currency: String? = coin.currency
-                val id: String? = coin.id
-                val value: String? = coin.value
-
-                when {
-                    currency == null -> {
-                        Log.e(tag, "[addAttachedCoinsToJSON] null currency of coin")
-                    }
-                    id == null -> {
-                        Log.e(tag, "[addAttachedCoinsToJSON] null id of coin")
-                    }
-                    value == null -> {
-                        Log.e(tag, "[addAttachedCoinsToJSON] null value of coin")
-                    }
-                    else -> {
-                        Log.d(tag, "[addAttachedCoinsToJSON] Adding coin $id")
-                        val coinJSON = JSONObject()
-                        coinJSON.put(CURRENCY, currency)
-                        coinJSON.put(ID, id)
-                        coinJSON.put(VALUE, value)
-
-                        coinJSONs.add(coinJSON)
-                    }
-                }
+                coinJSONs.add(coin.toJSON())
             }
 
             // Add the generated list of JSONObjects to the overall JSON
