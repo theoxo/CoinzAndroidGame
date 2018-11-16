@@ -10,6 +10,8 @@ import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 import kotlinx.android.synthetic.main.activity_bank.*
+import org.jetbrains.anko.toast
+import org.json.JSONException
 import org.json.JSONObject
 
 /**
@@ -126,21 +128,46 @@ class BankActivity : AppCompatActivity() {
                 } else {
                     val items = ArrayList<Coin>()
                     if (sourceChoiceIsWallet) {
-                        for ((key, value) in sourceSnapshot) {
+                        for ((_, coinJsonString) in sourceSnapshot) {
+                            if (coinJsonString == COIN_DEPOSITED) {
+                                // The coin has already been sent away or deposited. Don't list
+                                // it as an option
+                                continue
+                            } else {
+                                val coinJson = try {
+                                    JSONObject(coinJsonString.toString())
+                                } catch (e: JSONException) {
+                                    Log.e(tag, "[updateListView] JSON String is not "
+                                            +"COIN_DEPOSITED but JSON cast still failed.")
+                                    JSONObject()
+                                }
 
-                            val currency = key.substringBefore("|")
-                            val id = key.substringAfter("|")
-                            val coinValue = value as? String
-                            when (coinValue) {
-                                null -> {
-                                    Log.e(tag, "[updateListView] coinValue of $currency $id is null")
+                                val id: String? = try {
+                                    coinJson.getString(ID)
+                                } catch (e: JSONException) {
+                                    Log.e(tag, "[updateListView] Encountered exception $e when "
+                                            + "getting ID from coin.")
+                                    null
                                 }
-                                COIN_DEPOSITED -> {
-                                    // Skip this coin
+                                val currency: String? = try {
+                                    coinJson.getString(CURRENCY)
+                                } catch (e: JSONException) {
+                                    Log.e(tag, "[updateListView] Encountered exception $e when "
+                                            + "getting currency from coin.")
+                                    null
                                 }
-                                else -> {
+                                val coinValue: Double? = try {
+                                    coinJson.getDouble(VALUE)
+                                } catch (e: JSONException) {
+                                    Log.e(tag, "[updateListView] Encountered exception $e when "
+                                            + "getting coinValue from coin.")
+                                    null
+                                }
+
+                                if (id != null && currency != null && coinValue != null) {
                                     val coin = Coin(id, currency, coinValue)
                                     items.add(coin)
+
                                 }
                             }
                         }
@@ -196,7 +223,6 @@ class BankActivity : AppCompatActivity() {
 
         var depositAmount = 0.0
         val sourceUpdate = HashMap<String, String>()
-        val chosenCoins = ArrayList<Coin>()
         val ticks : SparseBooleanArray = coinsListView.checkedItemPositions
         val listLength = coinsListView.count
         for (i in 0 until listLength) {
@@ -204,7 +230,7 @@ class BankActivity : AppCompatActivity() {
                 // The item at this position is ticked. Deposit it
                 val coin : Coin? = coinsListView.getItemAtPosition(i) as? Coin
                 val currency : String? = coin?.currency
-                val value : Double? = coin?.value?.toDouble()
+                val value : Double? = coin?.value
                 val id : String? = coin?.id
                 val exchangeRate : Double? = rates?.get(currency) as? Double
 
@@ -226,7 +252,6 @@ class BankActivity : AppCompatActivity() {
                                          + "$currency is null")
                     }
                     else -> {
-                        chosenCoins.add(coin)
                         depositAmount += exchangeRate * value  // TODO is this the correct interpretation of exchangerate
                         if (sourceModeIsWallet) {
                             sourceUpdate["$currency|$id"] = COIN_DEPOSITED
@@ -275,7 +300,7 @@ class BankActivity : AppCompatActivity() {
      * @param source the document reference for the source the coin was retrieved from.
      * @param sourceUpdate a map with the data to set in the source.
      */
-    private fun updateSourceWithDepositedCoins(source : DocumentReference, sourceUpdate : Map<String, String>) {
+    private fun updateSourceWithDepositedCoins(source : DocumentReference, sourceUpdate : Map<String, Any>) {
         source.update(sourceUpdate).run {
             addOnSuccessListener { _ ->
                 Log.d(tag, "[updateSourceWithDepositedCoins] Success with "
@@ -331,6 +356,7 @@ class BankActivity : AppCompatActivity() {
                 Log.d(tag, "[setUsersBankCredit] Succeeded at setting credit = $credit")
                 creditUpdateDone = true
                 enableFurtherDeposits()
+                toast("Updated your bank credit")
             }
 
             addOnFailureListener { e ->

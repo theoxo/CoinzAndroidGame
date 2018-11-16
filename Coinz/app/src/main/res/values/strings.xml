@@ -8,7 +8,7 @@
     <string name="prompt_password">Password</string>
     <string name="action_sign_in">Sign in or register</string>
     <string name="action_sign_in_short">Sign in</string>
-    <string name="action_register">Not yet a member? Click here to register</string>
+    <string name="action_register">Register with the above details</string>
 
     <!-- Strings related to the bottom navigation bar -->
     <string name="home_nav_button">Home</string>
@@ -17,7 +17,7 @@
 
     <!-- Strings related to the bank -->
     <string name="bankText">
-        Hello and welcome to the bank!\nTo deposit coins, please choose a currency below:
+        Hello and welcome to the bank!
     </string>
 
 </resources>

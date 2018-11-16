@@ -3,6 +3,7 @@ package com.coinzgame.theoxo.coinz
 import android.content.*
 import android.location.Location
 import android.os.Bundle
+import android.os.CountDownTimer
 import android.support.design.widget.BottomNavigationView
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
@@ -81,6 +82,11 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
     // Today's rates
     private var rates : JSONObject? = null
+
+    // Combo bonus feature objects
+    private var comboTimer: CountDownTimer? = null
+    private var comboTimeRemaining: Long? = null
+    private var comboFactor: Double? = null
 
     /**
      * Initializes the necessary instances and event handlers upon activity creation.
@@ -374,13 +380,12 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                                 else -> {
                                     if (docSnapshot["$currency|$id"] == null) {
                                         // Add the marker if coin is not in wallet already
-                                        val icon : Icon
-                                        if (id.startsWith("ANCIENT")) {
+                                        val icon : Icon = if (id.startsWith("ANCIENT")) {
                                             Log.d(tag, "[addMarkers] Found an ancient coin $id")
-                                            icon = IconFactory.getInstance(this@MainActivity)
+                                            IconFactory.getInstance(this@MainActivity)
                                                     .fromResource(R.mipmap.star_drawable)
                                         } else {
-                                            icon = IconFactory.getInstance(this@MainActivity)
+                                            IconFactory.getInstance(this@MainActivity)
                                                     .defaultMarker()
                                         }
                                         val addedMarker: Marker? = mapboxMap?.addMarker(
@@ -455,16 +460,18 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
             initializeLocationEngine()
             initializeLocationLayer()
 
+            // Copy cachedMap for thread safety
+            val localCachedMap: String? = cachedMap
             // Start download from here to make sure that the mapboxMap isn't null when
             // it's time to add markers
-            if (cachedMap == null) {
+            if (localCachedMap == null) {
+                // Will need to download the map first before adding the markers.
                 Log.d(tag, "[onMapReady] Downloading coins location map")
                 val dateString = "http://homepages.inf.ed.ac.uk/stg/coinz/$currentDate/coinzmap.geojson"
                 DownloadFileTask(this).execute(dateString)
             } else {
                 Log.d(tag, "[onMapReady] Adding markers for cached map")
-                // TODO copy cached map instead of calling as !!
-                addMarkers(cachedMap!!)
+                addMarkers(localCachedMap)
             }
         }
     }
@@ -514,17 +521,22 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      */
     @SuppressWarnings("MissingPermission")
     private fun initializeLocationLayer() {
+        // Copy the fields to ensure safe multithreading
+        val localMapView = mapView
+        val localMapBoxMap = mapboxMap
+        val localLocationEngine = locationEngine
         when {
-            mapView == null -> {
+            localMapView == null -> {
                 Log.d(tag, "[initializeLocationLayer] mapView is null")
             }
 
-            mapboxMap == null -> {
+            localMapBoxMap == null -> {
                 Log.d(tag, "[initializeLocationLayer] mapboxMap is null")
             }
 
             else -> {
-                locationLayerPlugin = LocationLayerPlugin(mapView!!, mapboxMap!!, locationEngine)
+                locationLayerPlugin = LocationLayerPlugin(
+                        localMapView, localMapBoxMap, localLocationEngine)
                 locationLayerPlugin.apply {
                     setLocationLayerEnabled(true)
                     cameraMode = CameraMode.TRACKING
@@ -640,7 +652,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      * along with [distPerLong] and [flatEarthDist].
      * 
      * @param lat The current latitude.
-     * @return The approximate length of "one latitude at [lat]", in metres.
+     * @return The approximate length of one latitude at latitude [lat], in metres.
      */
     private fun distPerLat(lat : Double) : Double {
         return (-0.000000487305676*Math.pow(lat, 4.0)
@@ -656,7 +668,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      * along with [distPerLat] and [flatEarthDist].
      *
      * @param lat The current latitude.
-     * @return The approximate length of "one longitude at [lat]", in metres.
+     * @return The approximate length of one longitude at latitude [lat], in metres.
      */
     private fun distPerLong(lat : Double) : Double {
         return (0.0003121092*Math.pow(lat, 4.0)
@@ -679,13 +691,37 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      */
     private fun collectNearbyCoins() {
         val coinsToAddToWallet : MutableMap<String, Any> = HashMap()
-        val markersToRemove : MutableMap<String, Marker> = HashMap()  // id is needed to remove geofences
+        val markersToRemove : MutableMap<String, Marker> = HashMap()
 
         val coins = coinsInRange
+
+        // Copy the current combo for thread-safety
+        var localComboTimer = comboTimer
+        var localComboFactor = comboFactor
+        var localComboTimeRemaining = comboTimeRemaining
+
         for (id in coins) {
+            if (localComboTimer == null) {
+                // There is currently no timer active. Start one!
+                Log.d(tag, "[collectNearbyCoins] No combo active")
+                localComboTimeRemaining = 30000
+                localComboTimer = getComboTimerInstance(localComboTimeRemaining)
+            } else {
+                if (localComboTimeRemaining == null) {
+                    Log.e(tag, "[collectNearbyCoins] Combo timer is non-null but remaining time is")
+                } else {
+                    Log.d(tag, "[collectNearbyCoins] Combo found with comboTimer $localComboTimer"
+                            + ", time remaining $localComboTimeRemaining and factor $localComboFactor")
+                    // There's a combo active -- extend it by fifteen seconds!
+                    localComboTimer.cancel()
+                    localComboTimeRemaining += 20000
+                    localComboTimer = getComboTimerInstance(localComboTimeRemaining)
+                }
+            }
+
             val marker: Marker? = coinIdToMarker[id]
             val coinProperties: JsonObject? = coinIdToFeature[id]?.properties()
-            val value : String? = coinProperties?.get("value")?.asString
+            var value : Double? = coinProperties?.get("value")?.asDouble
             val currency : String? = coinProperties?.get("currency")?.asString
 
             when {
@@ -699,7 +735,16 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                     Log.e(tag, "[collectNearbyCoins] marker is null")
                 }
                 else -> {
-                    coinsToAddToWallet["$currency|$id"] = value
+                    // Everything looks good. Check if there's a combo active
+                    if (localComboFactor == null) {
+                        // No combo currently on but one will have be started above.
+                        localComboFactor = 1.05
+                    } else {
+                        value *= localComboFactor
+                        localComboFactor += 0.025
+                    }
+                    val coinJson = Coin(id, currency, value).toJSON()
+                    coinsToAddToWallet["$currency|$id"] = coinJson.toString()
                     markersToRemove[id] = marker
                 }
             }
@@ -718,6 +763,16 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         if (markersToRemove.isNotEmpty()) {
             removeMarkers(markersToRemove)
         }
+
+        // Start the combo timer we've set up
+        comboTimer = localComboTimer
+        comboTimer?.start()
+        if (localComboFactor != null) {
+        comboFactorText.text = "${String.format("%.1f", (localComboFactor-1)*100)}%"
+        }
+        comboFactor = localComboFactor
+        comboTimerText.text = "$localComboTimeRemaining"
+
 
     }
 
@@ -781,5 +836,28 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         coinsInRange.removeAll(coins.keys)
         updateCollectButton()
     }
-}
 
+    private fun getComboTimerInstance(millisInFuture: Long) : CountDownTimer {
+        comboTimeRemaining = millisInFuture
+
+        return object : CountDownTimer(millisInFuture, 1000) {
+            override fun onTick(millisRemaining: Long) {
+                try {
+                   val timerText: Int = (millisRemaining / 1000).toInt()
+                   comboTimerText.text = "$timerText"
+                } catch (e: NumberFormatException) {
+                    Log.e(tag, "[getComboTimerInstance][onTick] Exception: $e")
+                }
+                comboTimeRemaining = millisRemaining
+            }
+
+            override fun onFinish() {
+                comboTimerText.text = "No combo active"
+                comboFactorText.text = "No combo active"
+                comboTimeRemaining = null
+                comboTimer = null
+                comboFactor = null
+            }
+        }
+    }
+}

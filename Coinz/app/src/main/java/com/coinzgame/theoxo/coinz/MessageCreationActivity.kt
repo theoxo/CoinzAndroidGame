@@ -11,6 +11,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 import kotlinx.android.synthetic.main.activity_message_creation.*
 import org.jetbrains.anko.toast
+import org.json.JSONException
 import org.json.JSONObject
 import java.time.LocalDateTime
 import java.util.*
@@ -100,7 +101,7 @@ class MessageCreationActivity : AppCompatActivity() {
                     // add it to the email body
                     val coin : Coin? = coinsListView.getItemAtPosition(i) as? Coin
                     val currency : String? = coin?.currency
-                    val value : String? = coin?.value
+                    val value : Double? = coin?.value
                     val id : String? = coin?.id
                     when {
                         coin == null -> {
@@ -244,20 +245,46 @@ class MessageCreationActivity : AppCompatActivity() {
                     Log.w(tag, "[updateListView] walletSnapshot is null")
                 } else {
                     val items = ArrayList<Coin>()
-                    for ((key, value) in walletSnapshot) {
-                        val currency = key.substringBefore("|")
-                        val id = key.substringAfter("|")
-                        val coinValue = value as? String
-                        when (coinValue) {
-                            null -> {
-                                Log.e(tag, "[updateListView] coinValue of $currency $id is null")
+                    for ((_, coinJsonString) in walletSnapshot) {
+                        if (coinJsonString == COIN_DEPOSITED) {
+                            // The coin has already been sent away or deposited. Don't list
+                            // it as an option
+                            continue
+                        } else {
+                            val coinJson = try {
+                                JSONObject(coinJsonString.toString())
+                            } catch (e: JSONException) {
+                                Log.e(tag, "[updateListView] JSON String is not "
+                                        + "COIN_DEPOSITED but JSON cast still failed.")
+                                JSONObject()
                             }
-                            COIN_DEPOSITED -> {
-                                // Skip this coin
+
+                            val id: String? = try {
+                                coinJson.getString(ID)
+                            } catch (e: JSONException) {
+                                Log.e(tag, "[updateListView] Encountered exception $e when "
+                                        + "getting ID from coin.")
+                                null
                             }
-                            else -> {
+                            val currency: String? = try {
+                                coinJson.getString(CURRENCY)
+                            } catch (e: JSONException) {
+                                Log.e(tag, "[updateListView] Encountered exception $e when "
+                                        + "getting currency from coin.")
+                                null
+                            }
+                            val coinValue: Double? = try {
+                                coinJson.getDouble(VALUE)
+                            } catch (e: JSONException) {
+                                Log.e(tag, "[updateListView] Encountered exception $e when "
+                                        + "getting coinValue from coin.")
+                                null
+                            }
+
+                            if (id != null && currency != null && coinValue != null) {
                                 val coin = Coin(id, currency, coinValue)
                                 items.add(coin)
+
                             }
                         }
                     }
