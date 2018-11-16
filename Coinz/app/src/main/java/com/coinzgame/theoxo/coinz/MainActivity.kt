@@ -714,7 +714,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                             + ", time remaining $localComboTimeRemaining and factor $localComboFactor")
                     // There's a combo active -- extend it by fifteen seconds!
                     localComboTimer.cancel()
-                    localComboTimeRemaining += 15000
+                    localComboTimeRemaining += 20000
                     localComboTimer = getComboTimerInstance(localComboTimeRemaining)
                 }
             }

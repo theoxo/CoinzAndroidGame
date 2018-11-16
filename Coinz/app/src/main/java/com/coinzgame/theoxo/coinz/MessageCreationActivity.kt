@@ -149,7 +149,7 @@ class MessageCreationActivity : AppCompatActivity() {
      * @param sentCoinsDeletionMap a map of the coins to mark as invalid in the user's wallet.
      */
     private fun sendMessage(targetEmail : String, message : Message,
-                            sentCoinsDeletionMap : Map<String, Any>) {
+                            sentCoinsDeletionMap : Map<String, String>) {
 
         val messageTag = message.getMessageTag()
         val messageMap = mapOf(messageTag to message.toJSONString())
@@ -219,7 +219,7 @@ class MessageCreationActivity : AppCompatActivity() {
      *
      * @param sentCoinsDeletionMap a map of the coins to mark as invalid in the user's wallet.
      */
-    private fun deleteSentCoinsFromUsersWallet(sentCoinsDeletionMap: Map<String, Any>) {
+    private fun deleteSentCoinsFromUsersWallet(sentCoinsDeletionMap: Map<String, String>) {
         firestoreWallet?.update(sentCoinsDeletionMap)?.run {
             addOnSuccessListener {
                 Log.d(tag, "[deleteSentCoinsFromUsersWallet] Deleted "
