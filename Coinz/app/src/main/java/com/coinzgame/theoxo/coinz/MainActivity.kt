@@ -274,6 +274,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     private fun startAccountActivity() {
         val intent = Intent(this, AccountActivity::class.java)
         startActivity(intent)
+        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
     }
 
     /**
@@ -283,6 +284,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         val intent = Intent(this, InboxActivity::class.java)
         intent.putExtra(USER_EMAIL, currentUserEmail)
         startActivity(intent)
+        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
     }
 
     /**
@@ -355,6 +357,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                 // Features are non-null and mapboxMap is too. Can safely loop over the features,
                 // adding the markers to the map as we go along.
 
+                val iconFactory: IconFactory = IconFactory.getInstance(this)
+
                 // First, get snapshot of user wallet as it is
                 firestoreWallet?.get()?.run {
                     addOnSuccessListener { docSnapshot ->
@@ -371,38 +375,99 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                             val id: String? = properties?.get("id")?.asString
                             val value: String? = properties?.get("value")?.asString
                             val currency: String? = properties?.get("currency")?.asString
-                            //val symbol: String? = properties?.get("marker-symbol")?.asString
-                            //val colour: String? = properties?.get("marker-color")?.asString
 
                             when {
-                                id == null -> Log.e(tag, "[addMarkers] id of feature is null")
-                                currency == null -> Log.e(tag, "[addMarkers] currency of feature is null")
+                                id == null -> {
+                                    Log.e(tag, "[addMarkers] id of feature is null")
+                                }
+                                currency == null -> {
+                                    Log.e(tag, "[addMarkers] currency of feature is null")
+                                }
+                                value == null -> {
+                                    Log.e(tag, "[addMarkers] value of feature is null")
+                                }
+                                docSnapshot["$currency|$id"] != null -> {
+                                    // Coin has already been collected by the user. skip it
+                                }
                                 else -> {
-                                    if (docSnapshot["$currency|$id"] == null) {
-                                        // Add the marker if coin is not in wallet already
-                                        val icon : Icon = if (id.startsWith("ANCIENT")) {
-                                            Log.d(tag, "[addMarkers] Found an ancient coin $id")
-                                            IconFactory.getInstance(this@MainActivity)
-                                                    .fromResource(R.mipmap.star_drawable)
-                                        } else {
-                                            IconFactory.getInstance(this@MainActivity)
-                                                    .defaultMarker()
+
+                                    val valueDouble: Double = try {
+                                        value.toDouble()
+                                    } catch (e: NumberFormatException) {
+                                        Log.d(tag, "[addMarkers] Casting value to double "
+                                                + "failed. Setting it to -1.0")
+                                        // Setting the value to be negative will cause the icon
+                                        // to be null, meaning the marker will not be added.
+                                        -1.0
+                                    }
+                                    val icon : Icon? = when {
+                                        (id.startsWith("ANCIENT")
+                                                && currency == "SHIL") -> {
+                                            Log.d(tag, "[addMarkers] Found an ancient SHIL $id")
+                                            iconFactory.fromResource(R.mipmap.ancient_shil)
+                                            //iconFactory.defaultMarker()
                                         }
-                                        val addedMarker: Marker? = mapboxMap?.addMarker(
+
+                                        (id.startsWith("ANCIENT")
+                                                && currency == "DOLR") -> {
+                                            Log.d(tag, "[addMarkers] Found an ancient DOLR $id")
+                                            iconFactory.fromResource(R.mipmap.ancient_dolr)
+                                            //iconFactory.defaultMarker()
+                                        }
+
+                                        (id.startsWith("ANCIENT")
+                                                && currency == "QUID") -> {
+                                            Log.d(tag, "[addMarkers] Found an ancient QUID $id")
+                                            iconFactory.fromResource(R.mipmap.ancient_quid)
+                                            //iconFactory.defaultMarker()
+                                        }
+
+                                        (id.startsWith("ANCIENT")
+                                                && currency == "PENY") -> {
+                                            Log.d(tag, "[addMarkers] Found an ancient PENY $id")
+                                            iconFactory.fromResource(R.mipmap.ancient_peny)
+                                            //iconFactory.defaultMarker()
+                                        }
+
+                                        currency == "SHIL" -> {
+                                            getSHILIcon(iconFactory, valueDouble)
+                                        }
+
+                                        currency == "DOLR" -> {
+                                            getDOLRIcon(iconFactory, valueDouble)
+                                        }
+
+                                        currency == "PENY" -> {
+                                            getPENYIcon(iconFactory, valueDouble)
+                                        }
+
+                                        currency == "QUID" -> {
+                                            getQUIDIcon(iconFactory, valueDouble)
+                                        }
+                                        else  -> {
+                                            Log.e(tag, "[addMarkers] Unrecognized "
+                                                    + "currency $currency for id $id")
+                                            null
+                                        }
+                                    }
+                                    val addedMarker: Marker? = if (icon != null) {
+                                        mapboxMap?.addMarker(
                                                 MarkerOptions()
-                                                        .title("~${value?.substringBefore('.')} $currency.")
+                                                        .title("~${value.substringBefore('.')} $currency.")
                                                         .snippet("Currency: $currency.\nValue: $value.")
                                                         .position(LatLng(lat, long))
                                                         .icon(icon))
+                                    } else {
+                                        null
+                                    }
 
-                                        if (addedMarker != null) {
-                                            // Add ID -> Marker and ID -> Feature to the maps so
-                                            // we can identify and pick up nearby coins later
-                                            coinIdToMarker[id] = addedMarker
-                                            coinIdToFeature[id] = feature
-                                        } else {
-                                            Log.e(tag, "[addMarkers] Failed to add marker")
-                                        }
+                                    if (addedMarker != null) {
+                                        // Add ID -> Marker and ID -> Feature to the maps so
+                                        // we can identify and pick up nearby coins later
+                                        coinIdToMarker[id] = addedMarker
+                                        coinIdToFeature[id] = feature
+                                    } else {
+                                        Log.e(tag, "[addMarkers] Failed to add marker")
                                     }
                                 }
                             }
@@ -411,7 +476,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                 }
 
 
-                val bankIcon : Icon = iconFactory.fromResource(R.mipmap.bank_drawable)
+                val bankIcon : Icon = iconFactory.fromResource(R.mipmap.bank_icon)
 
                 // Also want to add a special marker for the bank
                 val bank : Marker? = mapboxMap?.addMarker(
@@ -857,6 +922,101 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                 comboTimeRemaining = null
                 comboTimer = null
                 comboFactor = null
+            }
+        }
+    }
+
+    private fun getSHILIcon(iconFactory: IconFactory, value: Double) : Icon? {
+        return when {
+            value < 0 || value >= 10 -> {
+                Log.e(tag, "[getSHILIcon] Unexpected value, icon will be null")
+                null
+            }
+            value < 2 -> {
+                iconFactory.fromResource(R.mipmap.shil0_2)
+            }
+            value < 4 -> {
+                iconFactory.fromResource(R.mipmap.shil2_4)
+            }
+            value < 6 -> {
+                iconFactory.fromResource(R.mipmap.shil4_6)
+            }
+            value < 8 -> {
+                iconFactory.fromResource(R.mipmap.shil6_8)
+            }
+            else -> {
+                iconFactory.fromResource(R.mipmap.shil8_10)
+            }
+        }
+    }
+
+    private fun getDOLRIcon(iconFactory: IconFactory, value: Double) : Icon? {
+        return when {
+            value < 0 || value >= 10 -> {
+                Log.e(tag, "[getDOLRIcon] Unexpected value, icon will be null")
+                null
+            }
+            value < 2 -> {
+                iconFactory.fromResource(R.mipmap.dolr0_2)
+            }
+            value < 4 -> {
+                iconFactory.fromResource(R.mipmap.dolr2_4)
+            }
+            value < 6 -> {
+                iconFactory.fromResource(R.mipmap.dolr4_6)
+            }
+            value < 8 -> {
+                iconFactory.fromResource(R.mipmap.dolr6_8)
+            }
+            else -> {
+                iconFactory.fromResource(R.mipmap.dolr8_10)
+            }
+        }
+    }
+    private fun getQUIDIcon(iconFactory: IconFactory, value: Double) : Icon? {
+        return when {
+            value < 0 || value >= 10 -> {
+                Log.e(tag, "[getQUIDIcon] Unexpected value, icon will be null")
+                null
+            }
+            value < 2 -> {
+                iconFactory.fromResource(R.mipmap.quid0_2)
+            }
+            value < 4 -> {
+                iconFactory.fromResource(R.mipmap.quid2_4)
+            }
+            value < 6 -> {
+                iconFactory.fromResource(R.mipmap.quid4_6)
+            }
+            value < 8 -> {
+                iconFactory.fromResource(R.mipmap.quid6_8)
+            }
+            else -> {
+                iconFactory.fromResource(R.mipmap.quid8_10)
+            }
+        }
+    }
+
+    private fun getPENYIcon(iconFactory: IconFactory, value: Double) : Icon? {
+        return when {
+            value < 0 || value >= 10 -> {
+                Log.e(tag, "[getPENYIcon] Unexpected value, icon will be null")
+                null
+            }
+            value < 2 -> {
+                iconFactory.fromResource(R.mipmap.peny0_2)
+            }
+            value < 4 -> {
+                iconFactory.fromResource(R.mipmap.peny2_4)
+            }
+            value < 6 -> {
+                iconFactory.fromResource(R.mipmap.peny4_6)
+            }
+            value < 6 -> {
+                iconFactory.fromResource(R.mipmap.peny6_8)
+            }
+            else -> {
+                iconFactory.fromResource(R.mipmap.peny8_10)
             }
         }
     }

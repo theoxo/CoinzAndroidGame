@@ -81,6 +81,28 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
 
                 val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
 
+                val currentSystemTime1 = System.currentTimeMillis()
+
+                val alarmCalendar : Calendar = Calendar.getInstance().apply {
+                    timeInMillis = currentSystemTime1
+                    set(Calendar.HOUR_OF_DAY, 23)
+                    set(Calendar.MINUTE, 20)
+                }
+
+                val alarmIntent = Intent(context, AncientCoinSpawner::class.java)
+                alarmIntent.action = ALARM_ACTION
+                val alarmPendingIntent =
+                        PendingIntent.getBroadcast(context,
+                                currentSystemTime1.toInt()+23,
+                                alarmIntent,
+                                PendingIntent.FLAG_ONE_SHOT)
+
+                alarmManager?.setRepeating(
+                        AlarmManager.RTC,
+                        alarmCalendar.timeInMillis,
+                        AlarmManager.INTERVAL_DAY,
+                        alarmPendingIntent
+                )
                 val desiredHours = listOf(7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18)
                 for (hour in desiredHours) {
                     // Set up two alarms; one for the hour precisely and one for half an hour later.
@@ -375,7 +397,7 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
 
         // Build notification
         val notificationBuilder = NotificationCompat.Builder(notificationContext, COINZ_CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.mipmap.coinz_logo)
                 .setContentTitle(title)
                 .setContentText(text)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
