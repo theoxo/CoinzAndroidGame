@@ -3,5 +3,5 @@
  https://stackoverflow.com/questions/18147840/slide-right-to-left-android-animations -->
 <set xmlns:android="http://schemas.android.com/apk/res/android"
     android:shareInterpolator="false" >
-    <translate android:duration="250" android:fromXDelta="0%" android:toXDelta="-100%"/>
+    <translate android:duration="250" android:fromYDelta="100%" android:toYDelta="0%"/>
 </set>

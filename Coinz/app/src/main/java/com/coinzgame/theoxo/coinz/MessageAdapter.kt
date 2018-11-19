@@ -25,7 +25,7 @@ class MessageAdapter(context : Context, messages : ArrayList<Message>) : ArrayAd
 
         val tvItem = view.findViewById<TextView>(R.id.standardListItemText)
 
-        var messageText = "${message?.senderEmail} ${message?.timestamp}"
+        var messageText = "${message?.senderEmail}\n${message?.timestamp}"
         val numAttachedCoins : Int? = message?.attachedCoins?.size
         when (numAttachedCoins) {
             null -> {

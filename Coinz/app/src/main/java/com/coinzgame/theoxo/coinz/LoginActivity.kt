@@ -8,6 +8,7 @@ import android.content.Intent
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
+import android.view.View
 import com.google.firebase.auth.FirebaseAuth
 
 import kotlinx.android.synthetic.main.activity_login.*
@@ -106,6 +107,14 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        // If we return to this activity by logging out, make sure the buttons are appropriately
+        // visible
+        updateButtons()
+
+    }
+
     /**
      * Enables and disables the "Sign in" and "Register" buttons depending on the text values.
      * This is so that the [FirebaseAuth] methods do not throw errors due to the text values
@@ -129,16 +138,24 @@ class LoginActivity : AppCompatActivity() {
      * @param password The password to use for the account.
      */
     private fun createUser(email : String, password : String) {
+        progressBar.visibility = View.VISIBLE
+        email_sign_in_button.isEnabled = false
+        email_register_button.isEnabled = false
         mAuth?.createUserWithEmailAndPassword(email, password)
                 ?.addOnCompleteListener {
-                        if (it.isSuccessful) {
-                            Log.d(tag, "[createUser]: Succesful")
-                            toast("Account creation succesful")
-                            startMain(email)
-                        } else {
-                            Log.d(tag, "[createUser]: Failed")
-                            toast("Account creation failed. Are you already a registered user?")
-                        }
+                    // Whatever the result is, hide the progress bar upon completion
+                    this@LoginActivity.progressBar.visibility = View.GONE
+
+                    if (it.isSuccessful) {
+                        Log.d(tag, "[createUser]: Succesful")
+                        toast("Account creation succesful")
+                        startMain(email)
+                    } else {
+                        this@LoginActivity.email_sign_in_button.isEnabled = true
+                        this@LoginActivity.email_register_button.isEnabled = true
+                        Log.d(tag, "[createUser]: Failed")
+                        toast("Account creation failed. Are you already a registered user?")
+                    }
                 }
     }
 
@@ -149,15 +166,23 @@ class LoginActivity : AppCompatActivity() {
      * @param password the password to log in to the account with.
      */
     private fun signInUser(email : String, password : String) {
+        progressBar.visibility = View.VISIBLE
+        email_sign_in_button.isEnabled = false
+        email_register_button.isEnabled = false
         mAuth?.signInWithEmailAndPassword(email, password)
                 ?.addOnCompleteListener {
-                       if (it.isSuccessful) {
-                           Log.d(tag, "[signInUser]: Successful")
-                           toast("Sign in successful!")
-                           startMain(email)
-                       } else {
-                           Log.d(tag, "[signInUser]: Failed")
-                           toast("Sign in failed. Have you entered your details correctly?")
+                    // Whatever the result is, hide the progress bar upon completion
+                    this@LoginActivity.progressBar.visibility = View.GONE
+
+                    if (it.isSuccessful) {
+                        Log.d(tag, "[signInUser]: Successful")
+                        toast("Sign in successful!")
+                        startMain(email)
+                    } else {
+                        this@LoginActivity.email_sign_in_button.isEnabled = true
+                        this@LoginActivity.email_register_button.isEnabled = true
+                        Log.d(tag, "[signInUser]: Failed")
+                        toast("Sign in failed. Have you entered your details correctly?")
                        }
                 }
     }

@@ -79,13 +79,6 @@ class BankActivity : AppCompatActivity() {
             switchToDepositMode()
         }
 
-        bankTextView.text = ("Hello and welcome to the Bank!\n"
-                            + "Today's rates are:\n"
-                            + "\t* DOLR to Gold: ${rates?.get("DOLR")}\n"
-                            + "\t* PENY to Gold: ${rates?.get("PENY")}\n"
-                            + "\t* QUID to Gold: ${rates?.get("QUID")}\n"
-                            + "\t* SHIL to Gold: ${rates?.get("SHIL")}\n")
-
         val emailTag : String? = currentUserEmail
         if (emailTag == null) {
             Log.e(tag, "[onCreate] null user email")
@@ -107,6 +100,11 @@ class BankActivity : AppCompatActivity() {
         chooseInboxButton.visibility = View.GONE
         coinsListView.visibility = View.VISIBLE
         depositButton.visibility = View.VISIBLE
+        bankTextView.text = ("Today's rates are:\n"
+                + "\t* DOLR to Gold: ${rates?.get("DOLR")}\n"
+                + "\t* PENY to Gold: ${rates?.get("PENY")}\n"
+                + "\t* QUID to Gold: ${rates?.get("QUID")}\n"
+                + "\t* SHIL to Gold: ${rates?.get("SHIL")}\n")
         updateListView()
     }
 
@@ -210,6 +208,8 @@ class BankActivity : AppCompatActivity() {
      */
     private fun depositSelectedCoins() {
 
+        bankProgressBar.visibility = View.VISIBLE
+
         val sourceModeIsWallet = choiceIsWallet
 
         val sourceChoiceIsWallet = choiceIsWallet
@@ -287,9 +287,12 @@ class BankActivity : AppCompatActivity() {
             sourceUpdateDone = false
             if (source == null) {
                 Log.e(tag, "[depositSelectedCoins] Want to update source but ref to it is null")
+                enableFurtherDeposits()
             } else {
                 updateSourceWithDepositedCoins(source, sourceUpdate)
             }
+        } else {
+            enableFurtherDeposits()
         }
 
     }
@@ -374,6 +377,7 @@ class BankActivity : AppCompatActivity() {
             // depositing redo the list view
             updateListView()
             depositButton.isEnabled = true
+            bankProgressBar.visibility = View.GONE
         }
     }
 }

@@ -273,6 +273,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      */
     private fun startAccountActivity() {
         val intent = Intent(this, AccountActivity::class.java)
+        intent.putExtra(USER_EMAIL, currentUserEmail)
         startActivity(intent)
         overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
     }
@@ -342,7 +343,6 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
         rates = JSONObject(geoJsonString).get("rates") as? JSONObject
         Log.d(tag, "Rates: $rates")
-        val iconFactory = IconFactory.getInstance(this)
         when {
             features == null -> {
                 Log.e(tag, "[addMarkers] features is null")

@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- modified from
+ https://stackoverflow.com/questions/18147840/slide-right-to-left-android-animations -->
 <set xmlns:android="http://schemas.android.com/apk/res/android"
     android:shareInterpolator="false" >
     <translate android:duration="250" android:fromXDelta="-100%" android:toXDelta="0%"/>
