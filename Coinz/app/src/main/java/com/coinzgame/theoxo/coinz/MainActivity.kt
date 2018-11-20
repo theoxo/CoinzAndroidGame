@@ -35,6 +35,7 @@ import com.mapbox.mapboxsdk.plugins.locationlayer.LocationLayerPlugin
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.CameraMode
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.RenderMode
 import kotlinx.android.synthetic.main.activity_main.*
+import org.jetbrains.anko.alert
 import org.jetbrains.anko.toast
 import org.json.JSONObject
 import java.util.*
@@ -74,6 +75,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     // Keep track of data related to the coins
     private lateinit var coinIdToMarker : MutableMap<String, Marker>
     private lateinit var coinIdToFeature : MutableMap<String, Feature>
+    private lateinit var markerIdToCoinId : MutableMap<Long, String>
 
     // Firebase Firestore database
     private var firestore :  FirebaseFirestore? = null
@@ -87,6 +89,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     private var comboTimer: CountDownTimer? = null
     private var comboTimeRemaining: Long? = null
     private var comboFactor: Double? = null
+
+    private var modeIsPickup: Boolean = false
 
     /**
      * Initializes the necessary instances and event handlers upon activity creation.
@@ -107,9 +111,14 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         coinsInRange = HashSet()
         coinIdToMarker = HashMap()
         coinIdToFeature = HashMap()
+        markerIdToCoinId = HashMap()
 
         // Set up the click event for the button which allows the user to collect the coins
         collectButton.setOnClickListener { _ -> collectNearbyCoins() }
+
+        // TODO testing fabs
+        fab_inspect.setOnClickListener { _ -> switchMode() }
+        fab_pickup.setOnClickListener {_ -> switchMode() }
 
         // Set up click events for bottom nav bar
         bottom_nav_bar.setOnNavigationItemSelectedListener(this)
@@ -132,6 +141,20 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
             mapView?.onCreate(savedInstanceState)
 
             enableLocation()
+        }
+    }
+
+    private fun switchMode() {
+        if (modeIsPickup) {
+            // In pick up mode, want to switch to inspect mode.
+            fab_inspect.visibility = View.GONE
+            fab_pickup.visibility = View.VISIBLE
+            modeIsPickup = false
+        } else {
+            // In inspect mode, want to switch to pick up mode.
+            fab_inspect.visibility = View.VISIBLE
+            fab_pickup.visibility = View.GONE
+            modeIsPickup = true
         }
     }
 
@@ -466,6 +489,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                                         // we can identify and pick up nearby coins later
                                         coinIdToMarker[id] = addedMarker
                                         coinIdToFeature[id] = feature
+                                        markerIdToCoinId[addedMarker.id] = id
                                     } else {
                                         Log.e(tag, "[addMarkers] Failed to add marker")
                                     }
@@ -510,15 +534,44 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
             this.mapboxMap = mapboxMap
             this.mapboxMap?.uiSettings?.isCompassEnabled = true
             this.mapboxMap?.setOnMarkerClickListener { marker ->
-                if (marker.title == "BANK") {
-                    val intent = Intent(this, BankActivity::class.java)
-                    intent.putExtra(USER_EMAIL, currentUserEmail)
-                    intent.putExtra(EXCHANGE_RATES, rates.toString())
-                    startActivity(intent)
-                    true
-                }
-                else {
-                    false
+                val markerPos = marker.position
+                val distance = flatEarthDist(originLocation.latitude, markerPos.latitude,
+                        originLocation.longitude, markerPos.longitude)
+                when {
+                    marker.title == "BANK" -> {
+                        if (distance <= 25.0) {
+                        val intent = Intent(this, BankActivity::class.java)
+                        intent.putExtra(USER_EMAIL, currentUserEmail)
+                        intent.putExtra(EXCHANGE_RATES, rates.toString())
+                        startActivity(intent)
+                        }
+                        else {
+                            toast("You're too far away from the bank")
+                        }
+
+                        // Either way consume the event as don't want to show a default
+                        // pop-up box for the bank
+                        true
+                    }
+
+                    modeIsPickup -> {
+                        // Pick up the coin
+                        if (distance <= 25.0) {
+                            val coinId = markerIdToCoinId[marker.id]
+                            if (coinId == null) {
+                                Log.e(tag, "[maboxMap OnMarkerClick] null coin id for ${marker.id}")
+                            } else {
+                                coinsInRange.add(coinId)
+                                collectNearbyCoins()
+                            }
+                        } else {
+                            toast("Too far away from coin")
+                        }
+                        true
+                    }
+                    else -> {
+                        false
+                    }
                 }
             }
 
@@ -654,7 +707,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         if (location != null) {
             originLocation = location
             setCameraPosition(location)
-            checkCoinsNearby(location)
+            //checkCoinsNearby(location)
         }
     }
 
