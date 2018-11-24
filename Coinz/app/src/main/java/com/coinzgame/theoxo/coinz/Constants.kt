@@ -24,6 +24,13 @@ const val CURRENCY = "Currency"
 const val VALUE = "Value"
 const val ID = "ID"
 
+// Ancient coin tags and spawn chance
+const val ANCIENT_SHIL = "Ancient SHIL coin"
+const val ANCIENT_QUID = "Ancient QUID coin"
+const val ANCIENT_DOLR = "Ancient DOLR coin"
+const val ANCIENT_PENY = "Ancient PENY coin"
+const val ANCIENT_COIN_SPAWN_CHANCE = 0.03125
+
 // Alarm managing tags
 const val ALARM_ACTION = "AncientCoinAlarmAction"
 const val COINZ_CHANNEL_ID = "CoinzNotificationChannel"
