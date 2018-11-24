@@ -9,6 +9,7 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
 import android.view.View
+import com.google.firebase.FirebaseException
 import com.google.firebase.auth.FirebaseAuth
 
 import kotlinx.android.synthetic.main.activity_login.*
@@ -141,22 +142,26 @@ class LoginActivity : AppCompatActivity() {
         progressBar.visibility = View.VISIBLE
         email_sign_in_button.isEnabled = false
         email_register_button.isEnabled = false
-        mAuth?.createUserWithEmailAndPassword(email, password)
-                ?.addOnCompleteListener {
-                    // Whatever the result is, hide the progress bar upon completion
-                    this@LoginActivity.progressBar.visibility = View.GONE
+        try {
+            mAuth?.createUserWithEmailAndPassword(email, password)
+                    ?.addOnCompleteListener {
+                        // Whatever the result is, hide the progress bar upon completion
+                        this@LoginActivity.progressBar.visibility = View.GONE
 
-                    if (it.isSuccessful) {
-                        Log.d(tag, "[createUser]: Succesful")
-                        toast("Account creation succesful")
-                        startMain(email)
-                    } else {
-                        this@LoginActivity.email_sign_in_button.isEnabled = true
-                        this@LoginActivity.email_register_button.isEnabled = true
-                        Log.d(tag, "[createUser]: Failed")
-                        toast("Account creation failed. Are you already a registered user?")
+                        if (it.isSuccessful) {
+                            Log.d(tag, "[createUser]: Succesful")
+                            toast("Account creation succesful")
+                            startMain(email)
+                        } else {
+                            this@LoginActivity.email_sign_in_button.isEnabled = true
+                            this@LoginActivity.email_register_button.isEnabled = true
+                            Log.d(tag, "[createUser]: Failed")
+                            toast("Account creation failed. Are you already a registered user?")
+                        }
                     }
-                }
+        } catch (e: FirebaseException) {
+            Log.e(tag, "[createUser] Firebase exception $e")
+        }
     }
 
     /**
@@ -169,22 +174,26 @@ class LoginActivity : AppCompatActivity() {
         progressBar.visibility = View.VISIBLE
         email_sign_in_button.isEnabled = false
         email_register_button.isEnabled = false
-        mAuth?.signInWithEmailAndPassword(email, password)
-                ?.addOnCompleteListener {
-                    // Whatever the result is, hide the progress bar upon completion
-                    this@LoginActivity.progressBar.visibility = View.GONE
+        try {
+            mAuth?.signInWithEmailAndPassword(email, password)
+                    ?.addOnCompleteListener {
+                        // Whatever the result is, hide the progress bar upon completion
+                        this@LoginActivity.progressBar.visibility = View.GONE
 
-                    if (it.isSuccessful) {
-                        Log.d(tag, "[signInUser]: Successful")
-                        toast("Sign in successful!")
-                        startMain(email)
-                    } else {
-                        this@LoginActivity.email_sign_in_button.isEnabled = true
-                        this@LoginActivity.email_register_button.isEnabled = true
-                        Log.d(tag, "[signInUser]: Failed")
-                        toast("Sign in failed. Have you entered your details correctly?")
-                       }
-                }
+                        if (it.isSuccessful) {
+                            Log.d(tag, "[signInUser]: Successful")
+                            toast("Sign in successful!")
+                            startMain(email)
+                        } else {
+                            this@LoginActivity.email_sign_in_button.isEnabled = true
+                            this@LoginActivity.email_register_button.isEnabled = true
+                            Log.d(tag, "[signInUser]: Failed")
+                            toast("Sign in failed. Have you entered your details correctly?")
+                        }
+                    }
+        } catch (e: FirebaseException) {
+            Log.e(tag, "[signInUser]: Log in failed with exception $e")
+        }
     }
 
     /**
