@@ -8,6 +8,7 @@
     android:minHeight="500dp"
     android:minWidth="300dp"
     android:theme="@style/AppTheme.Dialog"
+    android:animateLayoutChanges="true"
     tools:context=".BankActivity">
 
     <ImageView
@@ -20,7 +21,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.0"
-        app:srcCompat="@mipmap/bank_drawable" />
+        app:srcCompat="@mipmap/bank_icon" />
 
     <TextView
         android:id="@+id/bankTextView"
@@ -32,13 +33,14 @@
         android:text="@string/bankText"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/depositButton" />
+        app:layout_constraintTop_toBottomOf="@+id/bankProgressBar" />
 
     <ListView
         android:id="@+id/coinsListView"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
         android:layout_marginEnd="8dp"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -76,13 +78,14 @@
         app:layout_constraintVertical_bias="0.0" />
 
     <LinearLayout
+        android:id="@+id/linearLayout2"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="10dp"
         android:layout_marginTop="10dp"
         android:layout_marginEnd="10dp"
-        android:orientation="horizontal"
         android:gravity="center"
+        android:orientation="horizontal"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textView2">
@@ -112,4 +115,17 @@
             app:layout_constraintEnd_toStartOf="@+id/chooseInboxButton"
             app:layout_constraintTop_toBottomOf="@+id/textView2" />
     </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/bankProgressBar"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/depositButton" />
 </android.support.constraint.ConstraintLayout>

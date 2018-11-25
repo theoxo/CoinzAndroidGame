@@ -13,6 +13,8 @@ import kotlinx.android.synthetic.main.activity_account.*
 class AccountActivity : AppCompatActivity(),
         BottomNavigationView.OnNavigationItemSelectedListener {
 
+    private var currentUserEmail: String? = null
+
     /**
      * Sets up the activity and adds click events to the button(s).
      *
@@ -22,12 +24,18 @@ class AccountActivity : AppCompatActivity(),
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_account)
 
+        currentUserEmail = intent?.getStringExtra(USER_EMAIL)
+
         log_out_button.setOnClickListener {
                 logOutUser()
         }
 
         bottom_nav_bar.setOnNavigationItemSelectedListener(this)
 
+    }
+
+    override fun onStart() {
+        super.onStart()
         // Set default item pressed to account as that is what was pressed to get here
         bottom_nav_bar.selectedItemId = R.id.account_nav
     }
@@ -40,26 +48,30 @@ class AccountActivity : AppCompatActivity(),
     override fun onNavigationItemSelected(item : MenuItem): Boolean {
         when (item.itemId) {
             R.id.home_nav -> startMainActivity()
-            //R.id.messaging_nav -> startInboxActivity()
+            R.id.messaging_nav -> startInboxActivity()
             else -> return true //do nothing
         }
 
         return true
     }
 
-    // TODO
-    /*private fun startInboxActivity() {
+    private fun startInboxActivity() {
         val intent = Intent(this, InboxActivity::class.java)
-        intent.putExtra(USER_EMAIL, cur)
-    }*/
+        //intent.flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+        intent.putExtra(USER_EMAIL, currentUserEmail)
+        startActivity(intent)
+        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+    }
 
     /**
      * Reorders the previous [MainActivity] back to the front.
      */
     private fun startMainActivity() {
         val intent = Intent(this, MainActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+        //intent.flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+        intent.putExtra(USER_EMAIL, currentUserEmail)
         startActivity(intent)
+        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
     }
 
     /**

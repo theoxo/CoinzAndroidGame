@@ -35,7 +35,10 @@ import com.mapbox.mapboxsdk.plugins.locationlayer.LocationLayerPlugin
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.CameraMode
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.RenderMode
 import kotlinx.android.synthetic.main.activity_main.*
+import org.jetbrains.anko.alert
+import org.jetbrains.anko.design.snackbar
 import org.jetbrains.anko.toast
+import org.json.JSONException
 import org.json.JSONObject
 import java.util.*
 import kotlin.collections.HashMap
@@ -54,7 +57,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
     // Local variables related to the location tracking and displaying
     private lateinit var permissionsManager : PermissionsManager
-    private lateinit var originLocation : Location
+    private var originLocation : Location? = null
     private lateinit var locationEngine : LocationEngine
     private lateinit var locationLayerPlugin: LocationLayerPlugin
 
@@ -74,6 +77,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     // Keep track of data related to the coins
     private lateinit var coinIdToMarker : MutableMap<String, Marker>
     private lateinit var coinIdToFeature : MutableMap<String, Feature>
+    private lateinit var markerIdToCoinId : MutableMap<Long, String>
 
     // Firebase Firestore database
     private var firestore :  FirebaseFirestore? = null
@@ -88,6 +92,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     private var comboTimeRemaining: Long? = null
     private var comboFactor: Double? = null
 
+    private var modeIsPickup: Boolean = false
+
     /**
      * Initializes the necessary instances and event handlers upon activity creation.
      * Begins the process to set up the map and location tracking.
@@ -100,16 +106,34 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         setContentView(R.layout.activity_main)
 
         currentUserEmail = intent?.getStringExtra(USER_EMAIL)
+        val firstRunOfApp = intent?.getBooleanExtra(FIRST_TIME_RUNNING, true)
         Log.d(tag, "[onCreate] Received user email $currentUserEmail")
+        Log.d(tag, "[onCreate] Received $FIRST_TIME_RUNNING $firstRunOfApp")
+
+        if (firstRunOfApp != null && firstRunOfApp) {
+            // This is the first time the user is playing the game.
+            // Show them a little dialog explaining the basic concepts
+            alert {
+                message = ("Coinz is a social, location-based game. In order to play, you need to "
+                        + "have an active internet connection, and your location service on and "
+                        + "set to high accuracy mode.\n\nUse the floating action buttons to "
+                        + "switch between inspecting coins and picking them up when you "
+                        + "click on them.\n\nYou can then deposit the coins you've collected "
+                        + "into the bank in exchange for gold, or send them to your friends!")
+                title = "Hello there... Looks like you're new!"
+                positiveButton("Got it!"){}
+            }.show()
+        }
 
         Mapbox.getInstance(this, MAPBOX_KEY)
 
         coinsInRange = HashSet()
         coinIdToMarker = HashMap()
         coinIdToFeature = HashMap()
+        markerIdToCoinId = HashMap()
 
-        // Set up the click event for the button which allows the user to collect the coins
-        collectButton.setOnClickListener { _ -> collectNearbyCoins() }
+        fab_inspect.setOnClickListener { _ -> switchMode() }
+        fab_pickup.setOnClickListener {_ -> switchMode() }
 
         // Set up click events for bottom nav bar
         bottom_nav_bar.setOnNavigationItemSelectedListener(this)
@@ -136,6 +160,23 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     /**
+     * Switches the user mode between coin pick up and coin inspection.
+     */
+    private fun switchMode() {
+        if (modeIsPickup) {
+            // In pick up mode, want to switch to inspect mode.
+            fab_inspect.visibility = View.INVISIBLE
+            fab_pickup.visibility = View.VISIBLE
+            modeIsPickup = false
+        } else {
+            // In inspect mode, want to switch to pick up mode.
+            fab_inspect.visibility = View.VISIBLE
+            fab_pickup.visibility = View.INVISIBLE
+            modeIsPickup = true
+        }
+    }
+
+    /**
      * Fetches the preferences stored on the device if necessary.
      */
     override fun onStart() {
@@ -153,7 +194,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
         // Need to get date in onStart() because app may have been left running overnight
         val year : String = Calendar.getInstance().get(Calendar.YEAR).toString()
-        var month : String = (Calendar.getInstance().get(Calendar.MONTH) + 1).toString()  // Add one as 0-indexed
+        // Add one to the month as it is 0-indexed
+        var month : String = (Calendar.getInstance().get(Calendar.MONTH) + 1).toString()
         var day : String = Calendar.getInstance().get(Calendar.DAY_OF_MONTH).toString()
         if (year != "2018" && year != "2019") {
             Log.e(tag, "Unsupported date")
@@ -182,25 +224,25 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         }
 
         // Also get the current ancient coins
-        val ancientShilCoinString = storedPrefs.getString("Ancient SHIL coin", null)
+        val ancientShilCoinString = storedPrefs.getString(ANCIENT_SHIL, null)
         if (ancientShilCoinString != null && ancientShilCoinString.isNotEmpty()) {
             Log.d(tag, "[onStart] Found an ancient shil coin saved")
             ancientCoins.add(Feature.fromJson(ancientShilCoinString))
         }
 
-        val ancientQuidCoinString = storedPrefs.getString("Ancient QUID coin", null)
+        val ancientQuidCoinString = storedPrefs.getString(ANCIENT_QUID, null)
         if (ancientQuidCoinString != null  && ancientQuidCoinString.isNotEmpty()) {
             Log.d(tag, "[onStart] Found an ancient quid coin saved")
             ancientCoins.add(Feature.fromJson(ancientQuidCoinString))
         }
 
-        val ancientDolrCoinString = storedPrefs.getString("Ancient DOLR coin", null)
+        val ancientDolrCoinString = storedPrefs.getString(ANCIENT_DOLR, null)
         if (ancientDolrCoinString != null  && ancientDolrCoinString.isNotEmpty()) {
             Log.d(tag, "[onStart] Found an ancient dolr coin saved")
             ancientCoins.add(Feature.fromJson(ancientDolrCoinString))
         }
 
-        val ancientPenyCoinString = storedPrefs.getString("Ancient PENY coin", null)
+        val ancientPenyCoinString = storedPrefs.getString(ANCIENT_PENY, null)
         if (ancientPenyCoinString != null  && ancientPenyCoinString.isNotEmpty()) {
             Log.d(tag, "[onStart] Found an ancient peny coin saved")
             ancientCoins.add(Feature.fromJson(ancientPenyCoinString))
@@ -225,7 +267,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
             Log.d(tag, "[onStop] Not storing date or map")
         } else {
             // Store preferences
-            val settings: SharedPreferences = getSharedPreferences(PREFERENCES_FILE, Context.MODE_PRIVATE)
+            val settings: SharedPreferences = getSharedPreferences(PREFERENCES_FILE,
+                    Context.MODE_PRIVATE)
             val editor: SharedPreferences.Editor = settings.edit()
 
             Log.d(tag, "[onStop] Storing lastDownloadDate as currentDate: $currentDate")
@@ -273,7 +316,9 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      */
     private fun startAccountActivity() {
         val intent = Intent(this, AccountActivity::class.java)
+        intent.putExtra(USER_EMAIL, currentUserEmail)
         startActivity(intent)
+        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
     }
 
     /**
@@ -283,35 +328,14 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         val intent = Intent(this, InboxActivity::class.java)
         intent.putExtra(USER_EMAIL, currentUserEmail)
         startActivity(intent)
-    }
-
-    /**
-     * Updates the [collectButton] text and sets its visibility as appropriate.
-     */
-    private fun updateCollectButton() {
-        val coinsInRangeSize : Int = coinsInRange.size
-        when {
-            coinsInRangeSize > 1 -> {
-                collectButton.text = "Collect ${coinsInRange.size} Coins"
-                collectButton.visibility = View.VISIBLE
-            }
-
-            coinsInRangeSize == 1 -> {
-                collectButton.text = "Collect one Coin"
-                collectButton.visibility = View.VISIBLE
-            }
-
-            else -> {
-                collectButton.visibility = View.GONE
-            }
-        }
+        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
     }
 
     /**
      * Listener for the AsyncTask marker map data download having finished.
      * Begins the process of adding the downloaded coins to the map.
      *
-     * @param result the downloaded GeoJSON which describes the location of the coins/
+     * @param result the downloaded GeoJSON which describes today's coins
      */
     override fun downloadComplete(result: String) {
         val sneakpeak = result.take(25)
@@ -331,7 +355,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      * First checks that the coin being added isn't already in the user's wallet (meaning it has
      * already been collected).
      *
-     * @param geoJsonString The downloaded GeoJSON which describes the location of the coins.
+     * @param geoJsonString The downloaded GeoJSON which describes the coins.
      */
     private fun addMarkers(geoJsonString : String) {
         val features : MutableList<Feature>? = FeatureCollection.fromJson(geoJsonString).features()
@@ -340,7 +364,6 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
         rates = JSONObject(geoJsonString).get("rates") as? JSONObject
         Log.d(tag, "Rates: $rates")
-        val iconFactory = IconFactory.getInstance(this)
         when {
             features == null -> {
                 Log.e(tag, "[addMarkers] features is null")
@@ -354,6 +377,9 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
 
                 // Features are non-null and mapboxMap is too. Can safely loop over the features,
                 // adding the markers to the map as we go along.
+
+                val iconFactory: IconFactory = IconFactory.getInstance(this)
+                val coinIconFactory = CoinIconFactory(iconFactory)
 
                 // First, get snapshot of user wallet as it is
                 firestoreWallet?.get()?.run {
@@ -371,38 +397,59 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                             val id: String? = properties?.get("id")?.asString
                             val value: String? = properties?.get("value")?.asString
                             val currency: String? = properties?.get("currency")?.asString
-                            //val symbol: String? = properties?.get("marker-symbol")?.asString
-                            //val colour: String? = properties?.get("marker-color")?.asString
 
                             when {
-                                id == null -> Log.e(tag, "[addMarkers] id of feature is null")
-                                currency == null -> Log.e(tag, "[addMarkers] currency of feature is null")
+                                id == null -> {
+                                    Log.e(tag, "[addMarkers] id of feature is null")
+                                }
+                                currency == null -> {
+                                    Log.e(tag, "[addMarkers] currency of feature is null")
+                                }
+                                value == null -> {
+                                    Log.e(tag, "[addMarkers] value of feature is null")
+                                }
+                                docSnapshot["$currency|$id"] != null -> {
+                                    // Coin has already been collected by the user. skip it
+                                }
                                 else -> {
-                                    if (docSnapshot["$currency|$id"] == null) {
-                                        // Add the marker if coin is not in wallet already
-                                        val icon : Icon = if (id.startsWith("ANCIENT")) {
-                                            Log.d(tag, "[addMarkers] Found an ancient coin $id")
-                                            IconFactory.getInstance(this@MainActivity)
-                                                    .fromResource(R.mipmap.star_drawable)
-                                        } else {
-                                            IconFactory.getInstance(this@MainActivity)
-                                                    .defaultMarker()
-                                        }
-                                        val addedMarker: Marker? = mapboxMap?.addMarker(
+
+                                    val valueDouble: Double = try {
+                                        value.toDouble()
+                                    } catch (e: NumberFormatException) {
+                                        Log.d(tag, "[addMarkers] Casting value to double "
+                                                + "failed. Setting it to -1.0")
+                                        // Setting the value to be negative will cause the icon
+                                        // to be null, meaning the marker will not be added.
+                                        -1.0
+                                    }
+
+                                    val roundedValueString = String.format("%.2f", valueDouble)
+
+                                    val icon : Icon? = coinIconFactory.getIconForCoin(id, currency,
+                                            valueDouble)
+
+                                    val addedMarker: Marker? = if (icon != null) {
+                                        mapboxMap?.addMarker(
                                                 MarkerOptions()
-                                                        .title("~${value?.substringBefore('.')} $currency.")
-                                                        .snippet("Currency: $currency.\nValue: $value.")
+                                                        .title("~${value
+                                                                .substringBefore('.')}" +
+                                                                " $currency.")
+                                                        .snippet("Currency: $currency." +
+                                                                "\nValue: $roundedValueString.")
                                                         .position(LatLng(lat, long))
                                                         .icon(icon))
+                                    } else {
+                                        null
+                                    }
 
-                                        if (addedMarker != null) {
-                                            // Add ID -> Marker and ID -> Feature to the maps so
-                                            // we can identify and pick up nearby coins later
-                                            coinIdToMarker[id] = addedMarker
-                                            coinIdToFeature[id] = feature
-                                        } else {
-                                            Log.e(tag, "[addMarkers] Failed to add marker")
-                                        }
+                                    if (addedMarker != null) {
+                                        // Add ID -> Marker and ID -> Feature to the maps so
+                                        // we can identify and pick up nearby coins later
+                                        coinIdToMarker[id] = addedMarker
+                                        coinIdToFeature[id] = feature
+                                        markerIdToCoinId[addedMarker.id] = id
+                                    } else {
+                                        Log.e(tag, "[addMarkers] Failed to add marker")
                                     }
                                 }
                             }
@@ -411,7 +458,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                 }
 
 
-                val bankIcon : Icon = iconFactory.fromResource(R.mipmap.bank_drawable)
+                val bankIcon : Icon = iconFactory.fromResource(R.mipmap.bank_icon)
 
                 // Also want to add a special marker for the bank
                 val bank : Marker? = mapboxMap?.addMarker(
@@ -429,6 +476,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         }
     }
 
+
     /**
      * Listener function for the async call to receive the [MapboxMap].
      * Sets up the local [MapboxMap] instance ([mapboxMap]), and then begins to fetch today's coins
@@ -445,16 +493,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
             this.mapboxMap = mapboxMap
             this.mapboxMap?.uiSettings?.isCompassEnabled = true
             this.mapboxMap?.setOnMarkerClickListener { marker ->
-                if (marker.title == "BANK") {
-                    val intent = Intent(this, BankActivity::class.java)
-                    intent.putExtra(USER_EMAIL, currentUserEmail)
-                    intent.putExtra(EXCHANGE_RATES, rates.toString())
-                    startActivity(intent)
-                    true
-                }
-                else {
-                    false
-                }
+               onMarkerClick(marker)
             }
 
             initializeLocationEngine()
@@ -552,8 +591,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      * @param[location] the new location to focus the camera on.
      */
     private fun setCameraPosition(location : Location) {
-        mapboxMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(
-                LatLng(location.latitude, location.longitude), 15.0))
+        mapboxMap?.animateCamera(CameraUpdateFactory.newLatLng(
+                LatLng(location.latitude, location.longitude)))
     }
 
     override fun onExplanationNeeded(permissionsToExplain: MutableList<String>?) {
@@ -575,13 +614,13 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         }
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>,
+                                            grantResults: IntArray) {
         permissionsManager.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
     /**
      * Listener for the user's [Location] changing, updating the recorded and displayed location.
-     * Also invokes [checkCoinsNearby].
      *
      * @param location the new location found, or null.
      */
@@ -589,41 +628,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         if (location != null) {
             originLocation = location
             setCameraPosition(location)
-            checkCoinsNearby(location)
         }
-    }
-
-    /**
-     * Calculate distance between user and each coin on map, adding nearby ones to [coinsInRange].
-     * Currently "nearby" means ~25m, though the distance calculation is not exact.
-     * Invokes [updateCollectButton] before finishing to notify the user of newly added nearby
-     * coins.
-     * 
-     * @param location The user's current location.
-     */
-    private fun checkCoinsNearby(location : Location) {
-        for (coinID : String in coinIdToFeature.keys) {
-            val coinPoint : Point? = coinIdToFeature[coinID]?.geometry() as? Point
-            val fromLat : Double? = coinPoint?.latitude()
-            val fromLong : Double? = coinPoint?.longitude()
-
-            val toLat : Double = location.latitude
-            val toLong : Double = location.longitude
-
-            when {
-                fromLat == null -> Log.e(tag, "[onLocationChanged] Lat of $coinID is null")
-                fromLong == null -> Log.e(tag, "[onLocationChanged] Long of $coinID is null")
-                else -> {
-                    val dist = flatEarthDist(fromLat, toLat, fromLong, toLong)
-                    if (dist <= 25) {
-                        coinsInRange.add(coinID)
-                    }
-                }
-            }
-        }
-
-        // Update the collect button now that coinsInRange may have changed
-        updateCollectButton()
     }
 
     /**
@@ -687,110 +692,119 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     /**
-     * Collects all the nearby coins, i.e. those currently in [coinsInRange].
+     * Collects a desired coin, adding it to the users wallet and updating the map.
+     *
+     * @param coinId the coin-to-be-removed's id
      */
-    private fun collectNearbyCoins() {
-        val coinsToAddToWallet : MutableMap<String, Any> = HashMap()
-        val markersToRemove : MutableMap<String, Marker> = HashMap()
-
-        val coins = coinsInRange
+    private fun collectCoin(coinId: String) {
 
         // Copy the current combo for thread-safety
         var localComboTimer = comboTimer
         var localComboFactor = comboFactor
         var localComboTimeRemaining = comboTimeRemaining
 
-        for (id in coins) {
-            if (localComboTimer == null) {
-                // There is currently no timer active. Start one!
-                Log.d(tag, "[collectNearbyCoins] No combo active")
-                localComboTimeRemaining = 30000
-                localComboTimer = getComboTimerInstance(localComboTimeRemaining)
+
+        if (localComboTimer == null) {
+            // There is currently no timer active. Start one!
+            Log.d(tag, "[collectCoin] No combo active")
+            localComboTimeRemaining = 30000
+            localComboTimer = getComboTimerInstance(localComboTimeRemaining)
+        } else {
+            if (localComboTimeRemaining == null) {
+                Log.e(tag, "[collectCoin] Combo timer is non-null but remaining time is")
             } else {
-                if (localComboTimeRemaining == null) {
-                    Log.e(tag, "[collectNearbyCoins] Combo timer is non-null but remaining time is")
+                Log.d(tag, "[collectCoin] Combo found with comboTimer $localComboTimer"
+                        + ", time remaining $localComboTimeRemaining and factor $localComboFactor")
+                // There's a combo active -- extend it by fifteen seconds!
+                localComboTimer.cancel()
+                localComboTimeRemaining += 20000
+                if (localComboTimeRemaining > 120000) {
+                    localComboTimeRemaining = 120000
+                }
+                localComboTimer = getComboTimerInstance(localComboTimeRemaining)
+            }
+        }
+
+        val marker: Marker? = coinIdToMarker[coinId]
+        val coinProperties: JsonObject? = coinIdToFeature[coinId]?.properties()
+        var value : Double? = coinProperties?.get("value")?.asDouble
+        val currency : String? = coinProperties?.get("currency")?.asString
+
+        when {
+            value == null -> {
+                Log.e(tag, "[collectCoin] Coin value is null")
+            }
+            currency == null -> {
+                Log.e(tag, "[collectCoin] Coin currency is null")
+            }
+            marker == null -> {
+                Log.e(tag, "[collectCoin] marker is null")
+            }
+            else -> {
+                // Everything looks good. Check if there's a combo active
+                if (localComboFactor == null) {
+                    // No combo currently on but one will have be started above.
+                    localComboFactor = 1.05
                 } else {
-                    Log.d(tag, "[collectNearbyCoins] Combo found with comboTimer $localComboTimer"
-                            + ", time remaining $localComboTimeRemaining and factor $localComboFactor")
-                    // There's a combo active -- extend it by fifteen seconds!
-                    localComboTimer.cancel()
-                    localComboTimeRemaining += 20000
-                    localComboTimer = getComboTimerInstance(localComboTimeRemaining)
+                    value *= localComboFactor
+                    localComboFactor += 0.025
                 }
-            }
 
-            val marker: Marker? = coinIdToMarker[id]
-            val coinProperties: JsonObject? = coinIdToFeature[id]?.properties()
-            var value : Double? = coinProperties?.get("value")?.asDouble
-            val currency : String? = coinProperties?.get("currency")?.asString
+                // Update the user's wallet on firebase
+                updateWallet(coinId, currency, value)
+                // Remove the marker. This is safe because even if it fails the marker will simply
+                // be added to the map again the next time this activity is started, and so the user
+                // will be able to try again.
+                // This means we can remove the marker before waiting for the async call to the
+                // database to finish, making for a smoother user experience.
+                removeMarker(coinId, marker)
 
-            when {
-                value == null -> {
-                    Log.e(tag, "[collectNearbyCoins] Coin value is null")
-                }
-                currency == null -> {
-                    Log.e(tag, "[collectNearbyCoins] Coin currency is null")
-                }
-                marker == null -> {
-                    Log.e(tag, "[collectNearbyCoins] marker is null")
-                }
-                else -> {
-                    // Everything looks good. Check if there's a combo active
-                    if (localComboFactor == null) {
-                        // No combo currently on but one will have be started above.
-                        localComboFactor = 1.05
-                    } else {
-                        value *= localComboFactor
-                        localComboFactor += 0.025
-                    }
-                    val coinJson = Coin(id, currency, value).toJSON()
-                    coinsToAddToWallet["$currency|$id"] = coinJson.toString()
-                    markersToRemove[id] = marker
-                }
+                // Start the combo timer we've set up
+                comboTimer = localComboTimer
+                comboTimer?.start()
+                comboFactorText.text = "${String.format("%.1f", (localComboFactor-1)*100)}%"
+                comboFactor = localComboFactor
+                comboTimerText.text = "$localComboTimeRemaining"
             }
         }
-
-        // Note that we do not wait for the firestore update to complete successfully before
-        // removing the marker. This is safe because even if it fails the marker will simply
-        // be added to the map again the next time this activity is started, and so the user
-        // will be able to try again.
-        // This means we can remove the marker before waiting for the async call to the database
-        // to finish, making for a smoother user experience.
-        if (coinsToAddToWallet.isNotEmpty()) {
-            updateWallet(coinsToAddToWallet)
-        }
-
-        if (markersToRemove.isNotEmpty()) {
-            removeMarkers(markersToRemove)
-        }
-
-        // Start the combo timer we've set up
-        comboTimer = localComboTimer
-        comboTimer?.start()
-        if (localComboFactor != null) {
-        comboFactorText.text = "${String.format("%.1f", (localComboFactor-1)*100)}%"
-        }
-        comboFactor = localComboFactor
-        comboTimerText.text = "$localComboTimeRemaining"
-
-
     }
 
     /**
-     * Update the user's wallet on Firestore by adding the newly connected coins.
+     * Update the user's wallet on Firestore by adding the newly collected coin.
      *
-     * @param coins A map of "currency|id" -> value as expected by the database.
+     * @param coinId the coin's id
+     * @param currency the coin's currency
+     * @param value the coin's value
      */
-    private fun updateWallet(coins : MutableMap<String, Any>) {
+    private fun updateWallet(coinId: String, currency: String, value: Double) {
+
+        val coin = Coin(coinId, currency, value)
+        val roundedValue: String = String.format("%.2f", value)
+        val coinJsonString = try {
+            coin.toJSON().toString()
+        } catch (e: JSONException) {
+            Log.e(tag, "[updateWallet] Encountered JSON exception: $e")
+            null
+        }
+
+        if (coinJsonString == null) {
+            Log.e(tag, "[updateWallet] Failed to get JSON-string for coin with id $coinId")
+            // We don't want to push this to the database. Return early
+            return
+        }
+        // Generate a map of currency|id -> json-string as expected by the database
+        val coinMap: Map<String, String> = mapOf("$currency|$coinId" to coinJsonString)
+
         firestoreWallet?.get()?.run {
             addOnSuccessListener { docSnapshot ->
                 if (docSnapshot.exists()) {
-                    // Doc exists, update values
-                    firestoreWallet?.update(coins)?.run {
+                    // The wallet already exists, add or update this coin's values
+                    firestoreWallet?.update(coinMap)?.run {
                         addOnSuccessListener {
                             Log.d(tag,
-                                    "[updateWallet] Succeeded with ${coins.size} coins")
-                            toast("Added ${coins.size} coin(s) to your wallet")
+                                    "[updateWallet] Found wallet, added coin $coinId of " +
+                                            "currency $currency with value $value")
+                            snackbarLayout.snackbar("Collected $roundedValue $currency")
                         }
                         addOnFailureListener { e ->
                             Log.e(tag, "[updateWallet] Doc exists but update failed: $e")
@@ -799,11 +813,11 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                 } else {
                     // Doc doesn't exist, create it
                     Log.d(tag, "[updateWallet] Setting up new doc")
-                    firestoreWallet?.set(coins)?.run {
+                    firestoreWallet?.set(coin)?.run {
                         addOnSuccessListener {
-                            Log.d(tag,
-                                    "[updateWallet] Created wallet and set ${coins.size} coins")
-                            toast("Added ${coins.size} coin(s) to your wallet")
+                            Log.d(tag,"[updateWallet] Created wallet, added coin $coinId of" +
+                                    " currency $currency with value $value")
+                            snackbarLayout.snackbar("Collected $roundedValue $currency")
                         }
                         addOnFailureListener { e ->
                             Log.e(tag, "[updateWallet] Failed to create doc: $e")
@@ -818,26 +832,81 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
     }
 
     /**
-     * Removes the requested [Marker]s from the map upon coin collection.
+     * Removes the requested [Marker] from the map.
      *
-     * @param coins A map of "coin id -> marker" containing the markers to be removed.
+     * @param marker the marker to be removed
      */
-    private fun removeMarkers(coins : MutableMap<String, Marker>) {
-        for ((id, marker) in coins) {
-            mapboxMap?.removeMarker(marker)
-            Log.d(tag, "[removeMarkers] Successfully removed marker of $id")
+    private fun removeMarker(id: String, marker: Marker) {
+        mapboxMap?.removeMarker(marker)
+        Log.d(tag, "[removeMarkers] Removed marker of $id")
 
-            // Remove the coin id from the maps as it is no longer needed, and we do not want
-            // to check for its location again
-            coinIdToFeature.remove(id)
-            coinIdToMarker.remove(id)
-        }
+        // Remove the coin id from the maps as it is no longer needed, and we do not want
+        // to check for its location again
+        coinIdToFeature.remove(id)
+        coinIdToMarker.remove(id)
 
-        coinsInRange.removeAll(coins.keys)
-        updateCollectButton()
     }
 
+    /**
+     * Handles a [Marker] click event appropriately depending on the mode and distance.
+     *
+     * @param marker the marker which was clicked
+     * @return whether to consume the click event or not
+     */
+    private fun onMarkerClick(marker: Marker) : Boolean {
+        val userLocation = originLocation // copy for thread safety
+        val markerPos = marker.position
+        if (userLocation == null) {
+            toast("Could not find your location")
+            return false
+        } else {
+            val distance = flatEarthDist(userLocation.latitude, markerPos.latitude,
+                    userLocation.longitude, markerPos.longitude)
+            when {
+                marker.title == "BANK" -> {
+                    if (distance <= 25.0) {
+                        val intent = Intent(this, BankActivity::class.java)
+                        intent.putExtra(USER_EMAIL, currentUserEmail)
+                        intent.putExtra(EXCHANGE_RATES, rates.toString())
+                        startActivity(intent)
+                    } else {
+                        toast("You're too far away from the bank")
+                    }
+
+                    // Either way consume the event as don't want to show a default
+                    // pop-up box for the bank
+                    return true
+                }
+
+                modeIsPickup -> {
+                    // Pick up the coin
+                    if (distance <= 25.0) {
+                        val coinId = markerIdToCoinId[marker.id]
+                        if (coinId == null) {
+                            Log.e(tag, "[OnMarkerClick] null coin id for ${marker.id}")
+                        } else {
+                            collectCoin(coinId)
+                        }
+                    } else {
+                        toast("Too far away from coin")
+                    }
+                    return true
+                }
+                else -> {
+                    return false
+                }
+            }
+        }
+    }
+
+    /**
+     * Gets a singleton [CountDownTimer] instance with the desired duration and behaviour.
+     *
+     * @param millisInFuture the millisecond to count down to
+     * @return the set up combo timer
+     */
     private fun getComboTimerInstance(millisInFuture: Long) : CountDownTimer {
+
         comboTimeRemaining = millisInFuture
 
         return object : CountDownTimer(millisInFuture, 1000) {

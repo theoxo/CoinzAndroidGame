@@ -8,6 +8,8 @@ import android.content.Intent
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
+import android.view.View
+import com.google.firebase.FirebaseException
 import com.google.firebase.auth.FirebaseAuth
 
 import kotlinx.android.synthetic.main.activity_login.*
@@ -22,8 +24,9 @@ class LoginActivity : AppCompatActivity() {
 
     private var mAuth : FirebaseAuth? = null
 
-    private var emailEmpty : Boolean = true
-    private var pwEmpty : Boolean = true
+    private var emailEmpty: Boolean = true
+    private var pwEmpty: Boolean = true
+    private var firstRun: Boolean = true
 
     /**
      * Adds text and click listeners to the screen and sets up the authentication service.
@@ -78,7 +81,8 @@ class LoginActivity : AppCompatActivity() {
         // Check if this is the first time the app is being run on this device; if so,
         // set up the alarms for ancient coin spawn timings.
         val storedPrefs = getSharedPreferences(PREFERENCES_FILE, Context.MODE_PRIVATE)
-        if (!storedPrefs.getBoolean(FIRST_TIME_RUNNING, false)) {
+        firstRun = storedPrefs.getBoolean(FIRST_TIME_RUNNING, true)
+        if (firstRun) {
             Log.d(tag, "[onCreate] First time running the app")
             val alarmSetupIntent = Intent()
             alarmSetupIntent.action = FIRST_RUN_ACTION
@@ -86,7 +90,7 @@ class LoginActivity : AppCompatActivity() {
 
             // Mark that it is no longer the first time this app is running.
             val editor = storedPrefs.edit()
-            editor.putBoolean(FIRST_TIME_RUNNING, true)
+            editor.putBoolean(FIRST_TIME_RUNNING, false)
             editor.apply()
         } else {
             Log.d(tag, "[onCreate] Not first run of app")
@@ -104,6 +108,14 @@ class LoginActivity : AppCompatActivity() {
                 startMain(email)
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // If we return to this activity by logging out, make sure the buttons are appropriately
+        // visible
+        updateButtons()
+
     }
 
     /**
@@ -128,18 +140,30 @@ class LoginActivity : AppCompatActivity() {
      * @param email The email account to use to set up the account.
      * @param password The password to use for the account.
      */
-    private fun createUser(email : String, password : String) {
-        mAuth?.createUserWithEmailAndPassword(email, password)
-                ?.addOnCompleteListener {
+    private fun createUser(email: String, password: String) {
+        progressBar.visibility = View.VISIBLE
+        email_sign_in_button.isEnabled = false
+        email_register_button.isEnabled = false
+        try {
+            mAuth?.createUserWithEmailAndPassword(email, password)
+                    ?.addOnCompleteListener {
+                        // Whatever the result is, hide the progress bar upon completion
+                        this@LoginActivity.progressBar.visibility = View.GONE
+
                         if (it.isSuccessful) {
                             Log.d(tag, "[createUser]: Succesful")
                             toast("Account creation succesful")
                             startMain(email)
                         } else {
+                            this@LoginActivity.email_sign_in_button.isEnabled = true
+                            this@LoginActivity.email_register_button.isEnabled = true
                             Log.d(tag, "[createUser]: Failed")
                             toast("Account creation failed. Are you already a registered user?")
                         }
-                }
+                    }
+        } catch (e: FirebaseException) {
+            Log.e(tag, "[createUser] Firebase exception $e")
+        }
     }
 
     /**
@@ -149,17 +173,29 @@ class LoginActivity : AppCompatActivity() {
      * @param password the password to log in to the account with.
      */
     private fun signInUser(email : String, password : String) {
-        mAuth?.signInWithEmailAndPassword(email, password)
-                ?.addOnCompleteListener {
-                       if (it.isSuccessful) {
-                           Log.d(tag, "[signInUser]: Successful")
-                           toast("Sign in successful!")
-                           startMain(email)
-                       } else {
-                           Log.d(tag, "[signInUser]: Failed")
-                           toast("Sign in failed. Have you entered your details correctly?")
-                       }
-                }
+        progressBar.visibility = View.VISIBLE
+        email_sign_in_button.isEnabled = false
+        email_register_button.isEnabled = false
+        try {
+            mAuth?.signInWithEmailAndPassword(email, password)
+                    ?.addOnCompleteListener {
+                        // Whatever the result is, hide the progress bar upon completion
+                        this@LoginActivity.progressBar.visibility = View.GONE
+
+                        if (it.isSuccessful) {
+                            Log.d(tag, "[signInUser]: Successful")
+                            toast("Sign in successful!")
+                            startMain(email)
+                        } else {
+                            this@LoginActivity.email_sign_in_button.isEnabled = true
+                            this@LoginActivity.email_register_button.isEnabled = true
+                            Log.d(tag, "[signInUser]: Failed")
+                            toast("Sign in failed. Have you entered your details correctly?")
+                        }
+                    }
+        } catch (e: FirebaseException) {
+            Log.e(tag, "[signInUser]: Log in failed with exception $e")
+        }
     }
 
     /**
@@ -168,6 +204,7 @@ class LoginActivity : AppCompatActivity() {
     private fun startMain(email: String) {
         val intent = Intent(this, MainActivity::class.java)
         intent.putExtra(USER_EMAIL, email)
+        intent.putExtra(FIRST_TIME_RUNNING, firstRun)
         startActivity(intent)
     }
 

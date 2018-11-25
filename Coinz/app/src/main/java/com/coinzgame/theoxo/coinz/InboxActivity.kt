@@ -61,6 +61,10 @@ class InboxActivity : AppCompatActivity(),
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        bottom_nav_bar.selectedItemId = R.id.messaging_nav
+    }
     private fun startmessageCreationActivity() {
         val intent = Intent(this, MessageCreationActivity::class.java)
         intent.putExtra(USER_EMAIL, currentUserEmail)
@@ -109,8 +113,10 @@ class InboxActivity : AppCompatActivity(),
      */
     private fun startMainActivity() {
         val intent = Intent(this, MainActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+        //intent.flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+        intent.putExtra(USER_EMAIL, currentUserEmail)
         startActivity(intent)
+        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
     }
 
     /**
@@ -118,6 +124,9 @@ class InboxActivity : AppCompatActivity(),
      */
     private fun startAccountActivity() {
         val intent = Intent(this, AccountActivity::class.java)
+        //intent.flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+        intent.putExtra(USER_EMAIL, currentUserEmail)
         startActivity(intent)
+        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
     }
 }

@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
+import android.view.View
 import android.widget.AbsListView
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
@@ -82,8 +83,15 @@ class MessageCreationActivity : AppCompatActivity() {
      * Generates a new message from the information input by the user and then calls [sendMessage].
      */
     private fun generateMessage() {
+        messageSentProgressBar.visibility = View.VISIBLE
+        sendButton.isEnabled = false
+
         val targetEmail : String = targetEmail.text.toString()
-        val currentTime = LocalDateTime.now()
+        val currentTime = Calendar.getInstance().apply {
+            timeInMillis = System.currentTimeMillis()
+        }
+
+
 
         if (currentUserEmail == null) {
             Log.e(tag, "[generateMessage] currentUserEmail is null")
@@ -131,7 +139,10 @@ class MessageCreationActivity : AppCompatActivity() {
             messageJSON.put(MESSAGE_ATTACHMENTS, addedCoins)
             messageJSON.put(MESSAGE_TEXT, message.text.toString())
             messageJSON.put(SENDER, currentUserEmail)
-            messageJSON.put(TIMESTAMP, currentTime)
+            messageJSON.put(TIMESTAMP, "${currentTime.get(Calendar.DAY_OF_MONTH)}-" +
+                    "${currentTime.get(Calendar.MONTH) + 1}-${currentTime.get(Calendar.YEAR)}" +
+                    " ${currentTime.get(Calendar.HOUR_OF_DAY)}:${currentTime.get(Calendar.MINUTE)}" +
+                    ":${currentTime.get(Calendar.SECOND)}")
 
             val  generatedMessage = Message(messageJSON)
 
@@ -160,7 +171,9 @@ class MessageCreationActivity : AppCompatActivity() {
                 if (querySnapshot.isEmpty) {
                     // Collection does not exist, i.e. the user is not registered in the system
                     Log.w(tag, "[sendMessage] The target user  $targetEmail is not registered")
-                    toast("Could not find user $targetEmail")
+                    this@MessageCreationActivity.toast("Could not find user $targetEmail")
+                    this@MessageCreationActivity.messageSentProgressBar.visibility = View.GONE
+                    this@MessageCreationActivity.sendButton.isEnabled = true
                 } else {
                     var mailBoxExists = false
                     for (docSnapshot in querySnapshot.documents) {
@@ -170,12 +183,16 @@ class MessageCreationActivity : AppCompatActivity() {
                             // The target user has an existant inbox. Add this mail to it
                             targetInbox.update(messageMap).run {
                                 addOnSuccessListener {
+                                    this@MessageCreationActivity.messageSentProgressBar.visibility = View.GONE
+                                    this@MessageCreationActivity.sendButton.isEnabled = true
                                     Log.d(tag, "[sendMessage] Added mail to existent mailbox")
                                     toast("Mail sent")
                                     deleteSentCoinsFromUsersWallet(sentCoinsDeletionMap)
                                 }
 
                                 addOnFailureListener { e ->
+                                    this@MessageCreationActivity.messageSentProgressBar.visibility = View.GONE
+                                    this@MessageCreationActivity.sendButton.isEnabled = true
                                     Log.e(tag, "[sendMessage] Failed at adding mail to existent "
                                             + "mailbox: $e")
                                 }
@@ -194,12 +211,16 @@ class MessageCreationActivity : AppCompatActivity() {
                         // Target mailbox doesn't exist. Make it!
                         targetInbox.set(messageMap).run {
                             addOnSuccessListener {
+                                this@MessageCreationActivity.messageSentProgressBar.visibility = View.GONE
+                                this@MessageCreationActivity.sendButton.isEnabled = true
                                 Log.d(tag, "[sendMessage] Added mail to new mailbox")
                                 toast("Mail sent")
                                 deleteSentCoinsFromUsersWallet(sentCoinsDeletionMap)
                             }
 
                             addOnFailureListener { e ->
+                                this@MessageCreationActivity.messageSentProgressBar.visibility = View.GONE
+                                this@MessageCreationActivity.sendButton.isEnabled = true
                                 Log.e(tag, "[sendMessage] Failed at adding mail to new "
                                         + "mailbox: $e")
                             }
@@ -209,6 +230,8 @@ class MessageCreationActivity : AppCompatActivity() {
             }
 
             addOnFailureListener { e ->
+                this@MessageCreationActivity.messageSentProgressBar.visibility = View.GONE
+                this@MessageCreationActivity.sendButton.isEnabled = true
                 Log.e(tag, "[sendMessage] Target user's collection get failed: $e")
             }
         }
@@ -238,8 +261,10 @@ class MessageCreationActivity : AppCompatActivity() {
      * Updates the coin list view with the user's latest wallet info.
      */
     private fun updateListView() {
+        coinListProgressBar.visibility = View.VISIBLE
         firestoreWallet?.get()?.run {
             addOnSuccessListener { docSnapshot ->
+                this@MessageCreationActivity.coinListProgressBar.visibility = View.GONE
                 val walletSnapshot = docSnapshot.data?.toSortedMap()
                 if (walletSnapshot == null) {
                     Log.w(tag, "[updateListView] walletSnapshot is null")
@@ -298,6 +323,7 @@ class MessageCreationActivity : AppCompatActivity() {
 
             addOnFailureListener { e ->
                 Log.e(tag, "[updateListView] Wallet get failed: $e")
+                this@MessageCreationActivity.coinListProgressBar.visibility = View.GONE
             }
         }
     }
