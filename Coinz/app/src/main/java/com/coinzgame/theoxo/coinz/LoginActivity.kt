@@ -24,8 +24,9 @@ class LoginActivity : AppCompatActivity() {
 
     private var mAuth : FirebaseAuth? = null
 
-    private var emailEmpty : Boolean = true
-    private var pwEmpty : Boolean = true
+    private var emailEmpty: Boolean = true
+    private var pwEmpty: Boolean = true
+    private var firstRun: Boolean = true
 
     /**
      * Adds text and click listeners to the screen and sets up the authentication service.
@@ -80,7 +81,8 @@ class LoginActivity : AppCompatActivity() {
         // Check if this is the first time the app is being run on this device; if so,
         // set up the alarms for ancient coin spawn timings.
         val storedPrefs = getSharedPreferences(PREFERENCES_FILE, Context.MODE_PRIVATE)
-        if (!storedPrefs.getBoolean(FIRST_TIME_RUNNING, false)) {
+        firstRun = storedPrefs.getBoolean(FIRST_TIME_RUNNING, true)
+        if (firstRun) {
             Log.d(tag, "[onCreate] First time running the app")
             val alarmSetupIntent = Intent()
             alarmSetupIntent.action = FIRST_RUN_ACTION
@@ -88,7 +90,7 @@ class LoginActivity : AppCompatActivity() {
 
             // Mark that it is no longer the first time this app is running.
             val editor = storedPrefs.edit()
-            editor.putBoolean(FIRST_TIME_RUNNING, true)
+            editor.putBoolean(FIRST_TIME_RUNNING, false)
             editor.apply()
         } else {
             Log.d(tag, "[onCreate] Not first run of app")
@@ -138,7 +140,7 @@ class LoginActivity : AppCompatActivity() {
      * @param email The email account to use to set up the account.
      * @param password The password to use for the account.
      */
-    private fun createUser(email : String, password : String) {
+    private fun createUser(email: String, password: String) {
         progressBar.visibility = View.VISIBLE
         email_sign_in_button.isEnabled = false
         email_register_button.isEnabled = false
@@ -202,6 +204,7 @@ class LoginActivity : AppCompatActivity() {
     private fun startMain(email: String) {
         val intent = Intent(this, MainActivity::class.java)
         intent.putExtra(USER_EMAIL, email)
+        intent.putExtra(FIRST_TIME_RUNNING, firstRun)
         startActivity(intent)
     }
 

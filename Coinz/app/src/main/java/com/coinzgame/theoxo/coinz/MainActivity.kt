@@ -35,6 +35,7 @@ import com.mapbox.mapboxsdk.plugins.locationlayer.LocationLayerPlugin
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.CameraMode
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.RenderMode
 import kotlinx.android.synthetic.main.activity_main.*
+import org.jetbrains.anko.alert
 import org.jetbrains.anko.design.snackbar
 import org.jetbrains.anko.toast
 import org.json.JSONException
@@ -105,7 +106,24 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
         setContentView(R.layout.activity_main)
 
         currentUserEmail = intent?.getStringExtra(USER_EMAIL)
+        val firstRunOfApp = intent?.getBooleanExtra(FIRST_TIME_RUNNING, true)
         Log.d(tag, "[onCreate] Received user email $currentUserEmail")
+        Log.d(tag, "[onCreate] Received $FIRST_TIME_RUNNING $firstRunOfApp")
+
+        if (firstRunOfApp != null && firstRunOfApp) {
+            // This is the first time the user is playing the game.
+            // Show them a little dialog explaining the basic concepts
+            alert {
+                message = ("Coinz is a social, location-based game. In order to play, you need to "
+                        + "have an active internet connection, and your location service on and "
+                        + "set to high accuracy mode.\n\nUse the floating action buttons to "
+                        + "switch between inspecting coins and picking them up when you "
+                        + "click on them.\n\nYou can then deposit the coins you've collected "
+                        + "into the bank in exchange for gold, or send them to your friends!")
+                title = "Hello there... Looks like you're new!"
+                positiveButton("Got it!"){}
+            }.show()
+        }
 
         Mapbox.getInstance(this, MAPBOX_KEY)
 
