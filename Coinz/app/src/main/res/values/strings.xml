@@ -13,7 +13,7 @@
     <!-- Strings related to the bottom navigation bar -->
     <string name="home_nav_button">Home</string>
     <string name="account_nav_button">Account</string>
-    <string name="messaging_nav_button">Friends</string>
+    <string name="messaging_nav_button">Messages</string>
 
     <!-- Strings related to the bank -->
     <string name="bankText">
