@@ -17,7 +17,7 @@
 
     <!-- Strings related to the bank -->
     <string name="bankText">
-        Hello and welcome to the bank!
+        Loading your bank data…
     </string>
 
 </resources>

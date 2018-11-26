@@ -10,9 +10,11 @@ import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 import kotlinx.android.synthetic.main.activity_bank.*
+import org.jetbrains.anko.alert
 import org.jetbrains.anko.toast
 import org.json.JSONException
 import org.json.JSONObject
+import java.util.*
 
 /**
  * The screen which allows the user to deposit their coins into the bank.
@@ -30,6 +32,9 @@ class BankActivity : AppCompatActivity() {
     private var currentUserEmail : String? = null
 
     private var rates : JSONObject? = null
+    private var todaysDate: String? = null
+    private var goldInBank: Double? = null
+    private var coinsDepositedToday: Long? = null
 
     private var sourceUpdateDone : Boolean = true
     private var creditUpdateDone : Boolean = true
@@ -39,7 +44,7 @@ class BankActivity : AppCompatActivity() {
     private var coinToMessage : MutableMap<Coin, Message>? = null
 
     /**
-     * Sets up the local fields and invokes [updateListView].
+     * Sets up the local fields and invokes [pullFromDatabase].
      * This includes getting the [currentUserEmail] from the intent
      * and setting up the [firestore] related instances.
      *
@@ -86,43 +91,53 @@ class BankActivity : AppCompatActivity() {
             firestoreBank = firestore?.collection(emailTag)?.document(BANK_DOCUMENT)
             firestoreWallet = firestore?.collection(emailTag)?.document(WALLET_DOCUMENT)
             firestoreInbox = firestore?.collection(emailTag)?.document(INBOX_DOCUMENT)
-
-            updateListView()
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+
+        val calendar = Calendar.getInstance()
+        todaysDate = "${calendar.get(Calendar.YEAR)}-" +
+                "${calendar.get(Calendar.MONTH) + 1}-" +  // Add 1 as month is 0-indexed
+                "${calendar.get(Calendar.DAY_OF_MONTH)}"
+
+
+        pullFromDatabase()
+
+    }
     /**
      * Switches to deposit mode, hiding irrelevant elements and showing new ones.
      */
     private fun switchToDepositMode() {
         chooseWalletButton.visibility = View.GONE
-        textView2.visibility = View.GONE
         chooseInboxButton.visibility = View.GONE
         coinsListView.visibility = View.VISIBLE
         depositButton.visibility = View.VISIBLE
-        bankTextView.text = ("Today's rates are:\n"
+        lowerTextView.text = ("Today's rates are:\n"
                 + "\t* DOLR to Gold: ${rates?.get("DOLR")}\n"
                 + "\t* PENY to Gold: ${rates?.get("PENY")}\n"
                 + "\t* QUID to Gold: ${rates?.get("QUID")}\n"
                 + "\t* SHIL to Gold: ${rates?.get("SHIL")}\n")
-        updateListView()
+        pullFromDatabase()
     }
 
     /**
      * Updates [coinsListView] with the latest user wallet info.
      */
-    private fun updateListView() {
+    private fun pullFromDatabase() {
         val sourceChoiceIsWallet = choiceIsWallet
-        val source : DocumentReference? = when (sourceChoiceIsWallet) {
+        val coinSource : DocumentReference? = when (sourceChoiceIsWallet) {
             true -> firestoreWallet
             else -> firestoreInbox
         }
 
-        source?.get()?.run {
+        // Get the list of coins from the user's chosen source and update the listview.
+        coinSource?.get()?.run {
             addOnSuccessListener { docSnapshot ->
                 val sourceSnapshot = docSnapshot.data?.toMap()
                 if (sourceSnapshot == null) {
-                    Log.w(tag, "[updateListView] sourceSnapshot is null")
+                    Log.w(tag, "[pullFromDatabase] sourceSnapshot is null")
                 } else {
                     val items = ArrayList<Coin>()
                     if (sourceChoiceIsWallet) {
@@ -135,7 +150,7 @@ class BankActivity : AppCompatActivity() {
                                 val coinJson = try {
                                     JSONObject(coinJsonString.toString())
                                 } catch (e: JSONException) {
-                                    Log.e(tag, "[updateListView] JSON String is not "
+                                    Log.e(tag, "[pullFromDatabase] JSON String is not "
                                             +"COIN_DEPOSITED but JSON cast still failed.")
                                     JSONObject()
                                 }
@@ -143,21 +158,21 @@ class BankActivity : AppCompatActivity() {
                                 val id: String? = try {
                                     coinJson.getString(ID)
                                 } catch (e: JSONException) {
-                                    Log.e(tag, "[updateListView] Encountered exception $e when "
+                                    Log.e(tag, "[pullFromDatabase] Encountered exception $e when "
                                             + "getting ID from coin.")
                                     null
                                 }
                                 val currency: String? = try {
                                     coinJson.getString(CURRENCY)
                                 } catch (e: JSONException) {
-                                    Log.e(tag, "[updateListView] Encountered exception $e when "
+                                    Log.e(tag, "[pullFromDatabase] Encountered exception $e when "
                                             + "getting currency from coin.")
                                     null
                                 }
                                 val coinValue: Double? = try {
                                     coinJson.getDouble(VALUE)
                                 } catch (e: JSONException) {
-                                    Log.e(tag, "[updateListView] Encountered exception $e when "
+                                    Log.e(tag, "[pullFromDatabase] Encountered exception $e when "
                                             + "getting coinValue from coin.")
                                     null
                                 }
@@ -179,7 +194,7 @@ class BankActivity : AppCompatActivity() {
 
                             val attachedCoins = message.attachedCoins
                             if (attachedCoins == null) {
-                                Log.d(tag, "[updateListView] No coins in message from "
+                                Log.d(tag, "[pullFromDatabase] No coins in message from "
                                                  + "${message.senderEmail} at ${message.timestamp}")
                             } else {
                                 attachedCoins.forEach { coin -> coinToMessage?.put(coin, message) }
@@ -198,7 +213,45 @@ class BankActivity : AppCompatActivity() {
             }
 
             addOnFailureListener { e ->
-                Log.e(tag, "[updateListView] Source get failed: $e")
+                Log.e(tag, "[pullFromDatabase] Coin source get failed: $e")
+            }
+        }
+
+        // Also get the amount of coins already deposited today and the user's current bank credit
+        upperTextView.text = "Updating your bank info..."
+        firestoreBank?.get()?.run {
+            addOnSuccessListener { docSnapshot ->
+                var goldAmount = docSnapshot.get(GOLD_FIELD_TAG) as? Double
+                if (goldAmount == null) {
+                    // The user has not deposited any coins before and thus has 0 credit in their
+                    // bank.
+                    goldAmount = 0.0
+                }
+
+                goldInBank = goldAmount
+
+                val todaysDateCp = todaysDate // copy field for thread safety
+                if (todaysDateCp == null) {
+                    Log.e(tag, "[pullFromDatabase] todaysDateCp is null, cannot get number " +
+                            "of coins deposited already.")
+                } else {
+                    var depositedToday = docSnapshot.get(todaysDateCp) as? Long
+                    if (depositedToday == null) {
+                        Log.d(tag, "[pullFromDatabase] depositedToday is null")
+                        // The user has not deposited any coins today.
+                        depositedToday = 0
+                    }
+                    coinsDepositedToday = depositedToday
+                }
+
+
+                // Update the text displayed to the user appropriately
+                upperTextView.text = "Collected coins deposited today: $coinsDepositedToday." +
+                        "\nCurrent bank credit: ${String.format("%.2f", goldInBank)} GOLD."
+            }
+
+            addOnFailureListener { e ->
+                Log.e(tag, "[pullFromDataBase] Bank get failed: $e")
             }
         }
     }
@@ -209,11 +262,11 @@ class BankActivity : AppCompatActivity() {
     private fun depositSelectedCoins() {
 
         bankProgressBar.visibility = View.VISIBLE
-
         val sourceModeIsWallet = choiceIsWallet
+        val previouslyDepositedAmount = coinsDepositedToday
+        val previousCredit = goldInBank
 
-        val sourceChoiceIsWallet = choiceIsWallet
-        val source : DocumentReference? = when (sourceChoiceIsWallet) {
+        val source : DocumentReference? = when (sourceModeIsWallet) {
             true -> firestoreWallet
             else -> firestoreInbox
         }
@@ -252,7 +305,7 @@ class BankActivity : AppCompatActivity() {
                                          + "$currency is null")
                     }
                     else -> {
-                        depositAmount += exchangeRate * value  // TODO is this the correct interpretation of exchangerate
+                        depositAmount += value / exchangeRate // TODO is this the correct interpretation of exchangerate
                         if (sourceModeIsWallet) {
                             sourceUpdate["$currency|$id"] = COIN_DEPOSITED
                         } else {
@@ -274,24 +327,55 @@ class BankActivity : AppCompatActivity() {
             }
         }
 
-        // Add the calculated amount of gold to the user's bank account
-        if (depositAmount > 0) {
-            creditUpdateDone = false
-            addToUsersBank(depositAmount)
+        if (previouslyDepositedAmount != null
+                && sourceUpdate.size > (25 - previouslyDepositedAmount)
+                && sourceModeIsWallet) {
+            // The user is trying to deposit more coins than they are allowed to today.
+            // Show them an error
+            alert {
+                title = "Your banking is out of control!"
+                message = "It looks like you're trying to deposit ${sourceUpdate.size} coins " +
+                        "from your wallet, however you can only deposit " +
+                        "${25 - previouslyDepositedAmount} due " +
+                        "to the maximum of 25 deposited coins from the wallet per day."
+                positiveButton("Got it!"){
+                    this@BankActivity.enableFurtherDeposits()
+                }
+            }.show()
+
+            // Return early as we do not want to go through with the transaction
+            return
         }
+
 
         // Update the deposited coin's values in the database to a special value
         // to indicate that they have been deposited (do not delete them to ensure they
-        // are not added back to the map again)
-        if (!sourceUpdate.isEmpty()) {
-            sourceUpdateDone = false
+        // are not added back to the map again). Also adds the gold received to the user's bank
+        if (!sourceUpdate.isEmpty() && depositAmount > 0) {
             if (source == null) {
                 Log.e(tag, "[depositSelectedCoins] Want to update source but ref to it is null")
                 enableFurtherDeposits()
+            } else if (previouslyDepositedAmount == null) {
+                Log.e(tag, "[depositSelectedCoins] previouslyDepositedAmount null")
+            } else if (previousCredit == null) {
+                Log.e(tag, "[depositSelectedCoins] previousCredit null")
             } else {
+                sourceUpdateDone = false
+                creditUpdateDone = false
                 updateSourceWithDepositedCoins(source, sourceUpdate)
+                val newBankCredit = depositAmount + previousCredit
+                val newDepositedCounter = if (sourceModeIsWallet) {
+                    // If the user is depositing from the wallet we want to update the counter.
+                    // If not, pass updateUsersBankData null to skip it
+                    previouslyDepositedAmount + sourceUpdate.size
+                } else {
+                    null
+                }
+
+                updateUsersBankData(newBankCredit, newDepositedCounter)
             }
         } else {
+            Log.e(tag, "[depositSelectedCoins] SourceUpdate is empty or depositAmount is 0")
             enableFurtherDeposits()
         }
 
@@ -319,63 +403,51 @@ class BankActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Gets the user's current bank credit and adds the deposited amount to it.
-     *
-     * @param depositAmount the amount of GOLD that is being deposited.
-     */
-    private fun addToUsersBank(depositAmount : Double) {
-        firestoreBank?.get()?.run {
-            addOnSuccessListener { docSnapshot ->
-                val bankContents = docSnapshot.data
-                val currentAmount = bankContents?.get(GOLD_FIELD_TAG) as? Double
-                if (currentAmount == null) {
-                    Log.w(tag, "[addToUsersBank] Current amount is null, setting user's "
-                                     + "bank credit to $depositAmount")
-                    setUsersBankCredit(depositAmount)
-                } else {
-                    Log.d(tag, "[addToUsersBank] Found $currentAmount in user's bank. "
-                                     +"Setting user's credit to ${currentAmount + depositAmount}")
-                    setUsersBankCredit(depositAmount + currentAmount)
-                }
-            }
-
-            addOnFailureListener { e ->
-                Log.e(tag, "[addToUsersBank] Bank get failed: $e")
-            }
-        }
-    }
 
     /**
-     * Sets the user's bank credit to the specified amount.
+     * Sets the user's bank credit and updates the counter for today's deposited wallet coins.
      *
      * @param credit the amount of GOLD to set the user's credit to.
+     * @param numberOfDeposited the number of deposited coins
      */
-    private fun setUsersBankCredit(credit : Double) {
+    private fun updateUsersBankData(credit : Double, numberOfDeposited: Long?) {
         // Overwrites whatever credit is currently stored in the bank. Make sure this is
         // only called through addToUsersBank
-        firestoreBank?.set(mapOf(GOLD_FIELD_TAG to credit))?.run {
-            addOnSuccessListener { _ ->
-                Log.d(tag, "[setUsersBankCredit] Succeeded at setting credit = $credit")
-                creditUpdateDone = true
-                enableFurtherDeposits()
-                toast("Updated your bank credit")
+
+        val currentDate = todaysDate  // copy field for thread safety
+
+        if (currentDate == null) {
+            Log.e(tag, "[updateUsersBankData] currentDate is null, aborting")
+        } else {
+            val updateMap = if (numberOfDeposited == null) {
+                mapOf(GOLD_FIELD_TAG to credit)
+            } else {
+                mapOf(GOLD_FIELD_TAG to credit, currentDate to numberOfDeposited)
             }
 
-            addOnFailureListener { e ->
-                Log.e(tag, "[setUsersBankCredit] Failed: $e")
+            firestoreBank?.update(updateMap)?.run {
+                addOnSuccessListener { _ ->
+                    Log.d(tag, "[updateUsersBankData] Succeeded.")
+                    creditUpdateDone = true
+                    enableFurtherDeposits()
+                    toast("Successfully deposited your coins!")
+                }
+
+                addOnFailureListener { e ->
+                    Log.e(tag, "[updateUsersBankData] Failed: $e")
+                }
             }
         }
     }
 
     /**
-     * Invokes [updateListView] and re-enables the [depositButton] once the source is updated.
+     * Invokes [pullFromDatabase] and re-enables the [depositButton] once the source is updated.
      */
     private fun enableFurtherDeposits() {
         if (creditUpdateDone && sourceUpdateDone) {
             // If both credit update and wallet update succeeded, enable further
             // depositing redo the list view
-            updateListView()
+            pullFromDatabase()
             depositButton.isEnabled = true
             bankProgressBar.visibility = View.GONE
         }
