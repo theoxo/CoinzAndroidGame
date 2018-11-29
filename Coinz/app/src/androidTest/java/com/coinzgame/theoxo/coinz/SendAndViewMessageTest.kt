@@ -19,6 +19,7 @@ import org.hamcrest.TypeSafeMatcher
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.concurrent.ThreadLocalRandom
 
 @LargeTest
 @RunWith(AndroidJUnit4::class)
@@ -36,6 +37,9 @@ class SendAndViewMessageTest {
 
     @Test
     fun sendAndViewMessageTest() {
+
+        val randomDouble = ThreadLocalRandom.current().nextDouble()
+
         // Added a sleep statement to match the app's execution delay.
         // The recommended way to handle such scenarios is to use Espresso idling resources:
         // https://google.github.io/android-testing-support-library/docs/espresso/idling-resource/index.html
@@ -139,7 +143,7 @@ class SendAndViewMessageTest {
                                         0),
                                 0),
                         isDisplayed()))
-        appCompatEditText3.perform(replaceText("Test"), closeSoftKeyboard())
+        appCompatEditText3.perform(replaceText("Test$randomDouble"), closeSoftKeyboard())
 
         val appCompatButton4 = onView(
                 allOf(withId(R.id.sendButton), withText("SEND"),
@@ -280,14 +284,14 @@ class SendAndViewMessageTest {
         Thread.sleep(7000)
 
         val textView = onView(
-                allOf(withId(R.id.messageTextView), withText("Test"),
+                allOf(withId(R.id.messageTextView), withText("Test$randomDouble"),
                         childAtPosition(
                                 childAtPosition(
                                         withId(android.R.id.content),
                                         0),
                                 0),
                         isDisplayed()))
-        textView.check(matches(withText("Test")))
+        textView.check(matches(withText("Test$randomDouble")))
     }
 
     private fun childAtPosition(
