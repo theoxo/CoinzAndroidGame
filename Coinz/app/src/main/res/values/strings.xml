@@ -1,5 +1,5 @@
-<resources>
-    <string name="app_name">Coinz</string>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string tools:override="true" name="app_name">Coinz</string>
     <string name="action_settings">Settings</string>
     <string name="title_activity_login">Sign in to Coinz</string>
 

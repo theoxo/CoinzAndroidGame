@@ -102,6 +102,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
      */
     override fun onCreate(savedInstanceState: Bundle?) {
 
+        Log.d(tag, "onCreate fired")
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
@@ -864,14 +865,14 @@ class MainActivity : AppCompatActivity(), PermissionsListener, LocationEngineLis
                     userLocation.longitude, markerPos.longitude)
             when {
                 marker.title == "BANK" -> {
-                    if (distance <= 25.0) {
+                    //if (distance <= 25.0) {
                         val intent = Intent(this, BankActivity::class.java)
                         intent.putExtra(USER_EMAIL, currentUserEmail)
                         intent.putExtra(EXCHANGE_RATES, rates.toString())
                         startActivity(intent)
-                    } else {
-                        toast("You're too far away from the bank")
-                    }
+                    //} else {
+                        //toast("You're too far away from the bank")
+                    //}
 
                     // Either way consume the event as don't want to show a default
                     // pop-up box for the bank

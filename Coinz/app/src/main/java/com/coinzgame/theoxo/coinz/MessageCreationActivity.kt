@@ -11,6 +11,7 @@ import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 import kotlinx.android.synthetic.main.activity_message_creation.*
+import org.jetbrains.anko.email
 import org.jetbrains.anko.toast
 import org.json.JSONException
 import org.json.JSONObject
@@ -30,6 +31,8 @@ class MessageCreationActivity : AppCompatActivity() {
     // Firebase Firestore database
     private var firestore :  FirebaseFirestore? = null
     private var firestoreWallet : DocumentReference? = null
+    private var firestoreBank : DocumentReference? = null
+    private var todaysDate: String? = null
 
     /**
      * Sets up the screen, the [FirebaseFirestore] instance, and event listeners.
@@ -74,9 +77,18 @@ class MessageCreationActivity : AppCompatActivity() {
             Log.e(tag, "[onCreate] null user email")
         } else {
             firestoreWallet = firestore?.collection(emailTag)?.document(WALLET_DOCUMENT)
-
-            updateListView()
+            firestoreBank = firestore?.collection(emailTag)?.document(BANK_DOCUMENT)
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+
+        val calendar = Calendar.getInstance()
+        todaysDate = "${calendar.get(Calendar.YEAR)}-" +
+                "${calendar.get(Calendar.MONTH) + 1}-" +  // Add 1 as month is 0-indexed
+                "${calendar.get(Calendar.DAY_OF_MONTH)}"
+        checkIfElligebleToSendCoins()
     }
 
     /**
@@ -257,11 +269,48 @@ class MessageCreationActivity : AppCompatActivity() {
         finish()
     }
 
+    private fun checkIfElligebleToSendCoins() {
+        val todaysDateCp = todaysDate // copy field for thread safety
+        if (todaysDateCp == null) {
+            Log.e(tag, "[checkIfElligebleToSendCoins] Today's date is null, returning early")
+            return
+        }
+
+        coinListProgressBar.visibility = View.VISIBLE
+        // First check that the user has already deposited 25 coins today,
+        // meaning the rest is spare change. Only if this is true, update the list view
+        // with the coins wallet.
+        firestoreBank?.get()?.run {
+            addOnSuccessListener { documentSnapshot ->
+                var depositedToday = documentSnapshot.get(todaysDateCp) as? Long
+                if (depositedToday == null) {
+                    // The field is not in the user's bank or the bank doesn't exist;
+                    // either way they have not deposited any coins today.
+                    depositedToday = 0
+                }
+
+                if (depositedToday >= 25) {
+                    // Allow the user to send away coins
+                    updateListView()
+                } else {
+                    coinListProgressBar.visibility = View.GONE
+                    notElligbleText.visibility = View.VISIBLE
+                }
+
+            }
+
+            addOnFailureListener { e ->
+                Log.e(tag, "[checkIfElligebleToSendCoins] Bank get failed: $e")
+            }
+        }
+    }
+
+
     /**
-     * Updates the coin list view with the user's latest wallet info.
+     * Updates the coin list view with the user's latest wallet.
      */
     private fun updateListView() {
-        coinListProgressBar.visibility = View.VISIBLE
+
         firestoreWallet?.get()?.run {
             addOnSuccessListener { docSnapshot ->
                 this@MessageCreationActivity.coinListProgressBar.visibility = View.GONE

@@ -425,7 +425,7 @@ class BankActivity : AppCompatActivity() {
                 mapOf(GOLD_FIELD_TAG to credit, currentDate to numberOfDeposited)
             }
 
-            firestoreBank?.update(updateMap)?.run {
+            firestoreBank?.set(updateMap)?.run {
                 addOnSuccessListener { _ ->
                     Log.d(tag, "[updateUsersBankData] Succeeded.")
                     creditUpdateDone = true
