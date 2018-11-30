@@ -11,11 +11,9 @@ import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 import kotlinx.android.synthetic.main.activity_message_creation.*
-import org.jetbrains.anko.email
 import org.jetbrains.anko.toast
 import org.json.JSONException
 import org.json.JSONObject
-import java.time.LocalDateTime
 import java.util.*
 
 
@@ -114,7 +112,13 @@ class MessageCreationActivity : AppCompatActivity() {
             val sentCoinsDeletionMap = HashMap<String, String>()
 
             val ticks = coinsListView.checkedItemPositions
-            val listViewLength = ticks.size()
+            val listViewLength = if (ticks == null) {
+                0
+                // If the ticks is null, likely because the user is not allowed to
+                // send any coins, set this to 0 to not loop over them.
+            } else {
+                ticks.size()
+            }
             for (i in 0 until listViewLength) {
                 if (ticks[i]) {
                     // If the coin is ticked,

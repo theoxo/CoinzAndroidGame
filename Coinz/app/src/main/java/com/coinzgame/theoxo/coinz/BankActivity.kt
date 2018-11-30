@@ -352,27 +352,33 @@ class BankActivity : AppCompatActivity() {
         // to indicate that they have been deposited (do not delete them to ensure they
         // are not added back to the map again). Also adds the gold received to the user's bank
         if (!sourceUpdate.isEmpty() && depositAmount > 0) {
-            if (source == null) {
-                Log.e(tag, "[depositSelectedCoins] Want to update source but ref to it is null")
-                enableFurtherDeposits()
-            } else if (previouslyDepositedAmount == null) {
-                Log.e(tag, "[depositSelectedCoins] previouslyDepositedAmount null")
-            } else if (previousCredit == null) {
-                Log.e(tag, "[depositSelectedCoins] previousCredit null")
-            } else {
-                sourceUpdateDone = false
-                creditUpdateDone = false
-                updateSourceWithDepositedCoins(source, sourceUpdate)
-                val newBankCredit = depositAmount + previousCredit
-                val newDepositedCounter = if (sourceModeIsWallet) {
-                    // If the user is depositing from the wallet we want to update the counter.
-                    // If not, pass updateUsersBankData null to skip it
-                    previouslyDepositedAmount + sourceUpdate.size
-                } else {
-                    null
+            when {
+                source == null -> {
+                    Log.e(tag, "[depositSelectedCoins] Want to update source but ref to it is null")
+                    enableFurtherDeposits()
                 }
+                previouslyDepositedAmount == null -> {
+                    Log.e(tag, "[depositSelectedCoins] previouslyDepositedAmount null")
+                }
+                previousCredit == null -> {
+                    Log.e(tag, "[depositSelectedCoins] previousCredit null")
 
-                updateUsersBankData(newBankCredit, newDepositedCounter)
+                }
+                else -> {
+                    sourceUpdateDone = false
+                    creditUpdateDone = false
+                    updateSourceWithDepositedCoins(source, sourceUpdate)
+                    val newBankCredit = depositAmount + previousCredit
+                    val newDepositedCounter = if (sourceModeIsWallet) {
+                        // If the user is depositing from the wallet we want to update the counter.
+                        // If not, pass updateUsersBankData null to skip it
+                        previouslyDepositedAmount + sourceUpdate.size
+                    } else {
+                        null
+                    }
+
+                    updateUsersBankData(newBankCredit, newDepositedCounter)
+                }
             }
         } else {
             Log.e(tag, "[depositSelectedCoins] SourceUpdate is empty or depositAmount is 0")

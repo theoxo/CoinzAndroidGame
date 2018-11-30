@@ -4,27 +4,19 @@ import android.content.*
 import android.location.Location
 import android.os.Bundle
 import android.os.CountDownTimer
-import android.support.design.widget.BottomNavigationView
 import android.support.v4.app.Fragment
-import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.view.LayoutInflater
-import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
-import com.coinzgame.theoxo.coinz.R.id.home_nav
-import com.google.firebase.firestore.*
 import com.google.gson.JsonObject
 import com.mapbox.android.core.location.LocationEngine
 import com.mapbox.android.core.location.LocationEngineListener
 import com.mapbox.android.core.location.LocationEnginePriority
 import com.mapbox.android.core.location.LocationEngineProvider
-import com.mapbox.android.core.permissions.PermissionsListener
-import com.mapbox.android.core.permissions.PermissionsManager
 import com.mapbox.geojson.Feature
 import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
-import com.mapbox.mapboxsdk.Mapbox
 import com.mapbox.mapboxsdk.annotations.Icon
 import com.mapbox.mapboxsdk.annotations.IconFactory
 import com.mapbox.mapboxsdk.annotations.Marker
@@ -37,31 +29,24 @@ import com.mapbox.mapboxsdk.maps.OnMapReadyCallback
 import com.mapbox.mapboxsdk.plugins.locationlayer.LocationLayerPlugin
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.CameraMode
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.RenderMode
-import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.fragment_map.*
-import org.jetbrains.anko.alert
 import org.jetbrains.anko.design.snackbar
 import org.jetbrains.anko.toast
 import org.json.JSONException
 import org.json.JSONObject
-import java.util.*
 import kotlin.collections.HashMap
-import kotlin.collections.HashSet
 
 /**
  * The app's main Activity.
  * Handles various aspects of loading and displaying the map,
  * tracking the user's location, marking the coins on the map and picking them up.
  */
-class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, LocationEngineListener,
-        DownloadCompleteListener {//}, PermissionsListener, LocationEngineListener,
-       // OnMapReadyCallback, DownloadCompleteListener,
-        //BottomNavigationView.OnNavigationItemSelectedListener {
+class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
+        DownloadCompleteListener {
 
-    //private val "MainActivity" = "MainActivity"
+    private val fragTag = "MapFragment"
 
     // Local variables related to the location tracking and displaying
-    private lateinit var permissionsManager : PermissionsManager
     private var originLocation : Location? = null
     private lateinit var locationEngine : LocationEngine
     private lateinit var locationLayerPlugin: LocationLayerPlugin
@@ -71,13 +56,6 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
     private var mapboxMap : MapboxMap? = null
     private val bankLocation : LatLng = LatLng(55.945459, -3.188707)
 
-    // Locally saved data tracking
-    private var currentDate : String? = null // FORMAT YYYY/MM/DD
-    private var lastDownloadDate : String? = null
-    private var ancientCoins = ArrayList<Feature>()
-
-    // Keep track of which coins are within range
-    private lateinit var coinsInRange : MutableSet<String>
     // Keep track of data related to the coins
     private lateinit var coinIdToMarker : MutableMap<String, Marker>
     private lateinit var coinIdToFeature : MutableMap<String, Feature>
@@ -90,111 +68,42 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
     private var comboTimer: CountDownTimer? = null
     private var comboTimeRemaining: Long? = null
     private var comboFactor: Double? = null
-            private var mainActivity: MainActivity? = null
+    private var mainActivity: MainActivity? = null
 
     private var modeIsPickup: Boolean = false
 
-            override fun onAttach(context: Context?) {
-                super.onAttach(context)
-                mainActivity = context as? MainActivity
-
-            }
+    override fun onAttach(context: Context?) {
+        super.onAttach(context)
+        mainActivity = context as? MainActivity
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        Log.d("MainActivity", "Fragment created")
+        Log.d(fragTag, "Fragment created")
         return inflater.inflate(R.layout.fragment_map, container, false)
 
     }
 
-    /*override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        //Mapbox.getInstance(activity!!, MAPBOX_KEY)
-    }*/
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        mapView = view.findViewById<MapView>(R.id.mapView)
+        mapView = view.findViewById(R.id.mapView)
         mapView?.onCreate(savedInstanceState)
 
         fab_inspect.setOnClickListener { _ -> switchMode() }
         fab_pickup.setOnClickListener {_ -> switchMode() }
 
-        enableLocation()
-
-    }
-    /*
-    /**
-     * Initializes the necessary instances and event handlers upon activity creation.
-     * Begins the process to set up the map and location tracking.
-     *
-     * @param savedInstanceState the previously saved instance state, if it exists.
-     */
-    /*
-    override fun onCreate(savedInstanceState: Bundle?) {
-
-        Log.d("MainActivity", "onCreate fired")
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
-        currentUserEmail = intent?.getStringExtra(USER_EMAIL)
-        val firstRunOfApp = intent?.getBooleanExtra(FIRST_TIME_RUNNING, true)
-        Log.d("MainActivity", "[onCreate] Received user email $currentUserEmail")
-        Log.d("MainActivity", "[onCreate] Received $FIRST_TIME_RUNNING $firstRunOfApp")
-
-        if (firstRunOfApp != null && firstRunOfApp) {
-            // This is the first time the user is playing the game.
-            // Show them a little dialog explaining the basic concepts
-            alert {
-                message = ("Coinz is a social, location-based game. In order to play, you need to "
-                        + "have an active internet connection, and your location service on and "
-                        + "set to high accuracy mode.\n\nUse the floating action buttons to "
-                        + "switch between inspecting coins and picking them up when you "
-                        + "click on them.\n\nYou can then deposit the coins you've collected "
-                        + "into the bank in exchange for gold, or send them to your friends!")
-                title = "Hello there... Looks like you're new!"
-                positiveButton("Got it!"){}
-            }.show()
-        }
-
-        Mapbox.getInstance(this, MAPBOX_KEY)
-
-        coinsInRange = HashSet()
         coinIdToMarker = HashMap()
         coinIdToFeature = HashMap()
         markerIdToCoinId = HashMap()
 
-        fab_inspect.setOnClickListener { _ -> switchMode() }
-        fab_pickup.setOnClickListener {_ -> switchMode() }
+        mapView?.getMapAsync(this)
 
-        // Set up click events for bottom nav bar
-        bottom_nav_bar.setOnNavigationItemSelectedListener(this)
-
-        // Set up Firestore
-        firestore = FirebaseFirestore.getInstance()
-        // Use com.google.firebase.Timestamp instead of java.util.Date
-        val settings = FirebaseFirestoreSettings.Builder()
-                .setTimestampsInSnapshotsEnabled(true)
-                .build()
-        firestore?.firestoreSettings = settings
-
-        val email"MainActivity" : String? = currentUserEmail
-        if (email"MainActivity" == null) {
-            Log.e("MainActivity", "[onCreate] null user email")
-        } else {
-            firestoreWallet = firestore?.collection(email"MainActivity")?.document(WALLET_DOCUMENT)
-
-            mapView = findViewById(R.id.mapView)
-            mapView?.onCreate(savedInstanceState)
-
-            enableLocation()
-        }
-    }*/
+    }
 
     /**
      * Switches the user mode between coin pick up and coin inspection.
      */
-    */
+
     private fun switchMode() {
         if (modeIsPickup) {
             // In pick up mode, want to switch to inspect mode.
@@ -207,80 +116,15 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
             fab_pickup.visibility = View.INVISIBLE
             modeIsPickup = true
         }
-    }/*
+    }
 
     /**
      * Fetches the preferences stored on the device if necessary.
      */
-    /*
+
     override fun onStart() {
         super.onStart()
-
-        // Default navigation bar item checked should be home
-        bottom_nav_bar.selectedItemId = home_nav
-
         mapView?.onStart()
-
-        // Restore preferences
-        val storedPrefs = getSharedPreferences(PREFERENCES_FILE, Context.MODE_PRIVATE)
-        lastDownloadDate = storedPrefs.getString(LAST_DOWNLOAD_DATE, null)
-        Log.d("MainActivity", "[onStart] Fetched lastDownloadDate: $lastDownloadDate")
-
-        // Need to get date in onStart() because app may have been left running overnight
-        val year : String = Calendar.getInstance().get(Calendar.YEAR).toString()
-        // Add one to the month as it is 0-indexed
-        var month : String = (Calendar.getInstance().get(Calendar.MONTH) + 1).toString()
-        var day : String = Calendar.getInstance().get(Calendar.DAY_OF_MONTH).toString()
-        if (year != "2018" && year != "2019") {
-            Log.e("MainActivity", "Unsupported date")
-        }
-        if (month.length < 2) {
-            // Pad to 0M format
-            month = "0$month"
-        }
-        if (day.length < 2) {
-            // Pad to 0D format
-            day = "0$day"
-        }
-
-        currentDate = "$year/$month/$day"
-        Log.d("MainActivity", "[onStart] Today's date: $currentDate")
-
-        if (currentDate == lastDownloadDate) {
-            Log.d("MainActivity", "[onStart] Dates match, fetching cached map")
-            cachedMap = storedPrefs.getString(SAVED_MAP_JSON, null)
-            if (cachedMap == null) {
-                Log.w("MainActivity", "[onStart] Dates matched but fetched cachedMap is null! "
-                                + "Map will be downloaded.")
-            } else {
-                Log.d("MainActivity", "[onStart] Fetched cachedMap: ${cachedMap?.take(25)}")
-            }
-        }
-
-        // Also get the current ancient coins
-        val ancientShilCoinString = storedPrefs.getString(ANCIENT_SHIL, null)
-        if (ancientShilCoinString != null && ancientShilCoinString.isNotEmpty()) {
-            Log.d("MainActivity", "[onStart] Found an ancient shil coin saved")
-            ancientCoins.add(Feature.fromJson(ancientShilCoinString))
-        }
-
-        val ancientQuidCoinString = storedPrefs.getString(ANCIENT_QUID, null)
-        if (ancientQuidCoinString != null  && ancientQuidCoinString.isNotEmpty()) {
-            Log.d("MainActivity", "[onStart] Found an ancient quid coin saved")
-            ancientCoins.add(Feature.fromJson(ancientQuidCoinString))
-        }
-
-        val ancientDolrCoinString = storedPrefs.getString(ANCIENT_DOLR, null)
-        if (ancientDolrCoinString != null  && ancientDolrCoinString.isNotEmpty()) {
-            Log.d("MainActivity", "[onStart] Found an ancient dolr coin saved")
-            ancientCoins.add(Feature.fromJson(ancientDolrCoinString))
-        }
-
-        val ancientPenyCoinString = storedPrefs.getString(ANCIENT_PENY, null)
-        if (ancientPenyCoinString != null  && ancientPenyCoinString.isNotEmpty()) {
-            Log.d("MainActivity", "[onStart] Found an ancient peny coin saved")
-            ancientCoins.add(Feature.fromJson(ancientPenyCoinString))
-        }
     }
 
     override fun onResume() {
@@ -288,32 +132,9 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
         mapView?.onResume()
     }
 
-    /**
-     * Saves the user preferences if needed.
-     * The user preferences are stored on the device only if [lastDownloadDate]
-     * has changed since the last time they were stored.
-     */
     override fun onStop() {
         super.onStop()
         mapView?.onStop()
-
-        if (lastDownloadDate == currentDate) {
-            Log.d("MainActivity", "[onStop] Not storing date or map")
-        } else {
-            // Store preferences
-            val settings: SharedPreferences = getSharedPreferences(PREFERENCES_FILE,
-                    Context.MODE_PRIVATE)
-            val editor: SharedPreferences.Editor = settings.edit()
-
-            Log.d("MainActivity", "[onStop] Storing lastDownloadDate as currentDate: $currentDate")
-            editor.putString(LAST_DOWNLOAD_DATE, currentDate)
-
-            val sneakpeak: String? = cachedMap?.take(25)
-            Log.d("MainActivity", "[onStop] Storing cachedMap: $sneakpeak...")
-            editor.putString(SAVED_MAP_JSON, cachedMap)
-
-            editor.apply()
-        }
     }
 
     override fun onLowMemory() {
@@ -331,81 +152,53 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
         mapView?.onSaveInstanceState(outState)
     }
 
-    /**
-     * Handles user clicks on the [BottomNavigationView], starting the corresponding activities.
-     *
-     * @param item the menu item clicked
-     */
-    override fun onNavigationItemSelected(item : MenuItem): Boolean {
-        when (item.itemId) {
-            R.id.account_nav -> startAccountActivity()
-            R.id.messaging_nav -> startInboxActivity()
-            else -> return true //do nothing
-        }
-        return true
-    }
-
-    /**
-     * Starts a new [AccountActivity].
-     */
-    private fun startAccountActivity() {
-        val intent = Intent(this, AccountActivity::class.java)
-        intent.putExtra(USER_EMAIL, currentUserEmail)
-        startActivity(intent)
-        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
-    }
-
-    /**
-     * Starts a new [InboxActivity].
-     */
-    private fun startInboxActivity() {
-        val intent = Intent(this, InboxActivity::class.java)
-        intent.putExtra(USER_EMAIL, currentUserEmail)
-        startActivity(intent)
-        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
-    }
 
     /**
      * Listener for the AsyncTask marker map data download having finished.
      * Begins the process of adding the downloaded coins to the map.
      *
      * @param result the downloaded GeoJSON which describes today's coins
-     */*/*/
+     */
     override fun downloadComplete(result: String) {
         val sneakpeak = result.take(25)
-        Log.d("MainActivity", "Fragment [downloadComplete] Result: $sneakpeak...")
+        Log.d(fragTag, "Fragment [downloadComplete] Result: $sneakpeak...")
 
         if (result == NETWORK_ERROR) {
             mainActivity?.toast(NETWORK_ERROR)
             mainActivity?.finish()
         } else {
+            mainActivity?.lastDownloadDate = mainActivity?.currentDate
             mainActivity?.cachedMap = result  // store the cachedMap so we can save it onStop
             addMarkers(result)
         }
-    }/*
-
+    }
     /**
      * Adds the [Marker]s for the coins to the [MapboxMap] being displayed.
      * First checks that the coin being added isn't already in the user's wallet (meaning it has
      * already been collected).
      *
      * @param geoJsonString The downloaded GeoJSON which describes the coins.
-     */*/
+     */
     private fun addMarkers(geoJsonString : String) {
-        Log.d("MainActivity", "MapFragment addMarkers invoked")
+        Log.d(fragTag, "addMarkers invoked")
         val features : MutableList<Feature>? = FeatureCollection.fromJson(geoJsonString).features()
         // Also add any and all currently active ancient coins
-        features?.addAll(ancientCoins)
+        val mainActivityCp = mainActivity // copy field for thread safety
+        if (mainActivityCp == null) {
+            Log.w(fragTag, "[addMarkers] mainActivity is null, can't get ancient coins")
+        } else {
+            features?.addAll(mainActivityCp.ancientCoins)
+        }
 
         rates = JSONObject(geoJsonString).get("rates") as? JSONObject
-        Log.d("MainActivity", "Rates: $rates")
+        Log.d(fragTag, "Rates: $rates")
         when {
             features == null -> {
-                Log.e("MainActivity", "[addMarkers] features is null")
+                Log.e(fragTag, "[addMarkers] features is null")
             }
 
             this.mapboxMap == null -> {
-                Log.e("MainActivity", "[addMarkers] mapboxMap is null, can't add markers")
+                Log.e(fragTag, "[addMarkers] mapboxMap is null, can't add markers")
             }
 
             else -> {
@@ -419,7 +212,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
                 // First, get snapshot of user wallet as it is
                 mainActivity!!.firestoreWallet!!.get().run {
                     addOnSuccessListener { docSnapshot ->
-                        Log.d("MainActivity", "MapFragment wallet get succ")
+                        Log.d(fragTag, "MapFragment wallet get succ")
                         // Getting the snapshot succeeded. Add the markers and geofences iff
                         // they are not already in the snapshot (i.e. the user has collected
                         // them before)
@@ -436,13 +229,13 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
 
                             when {
                                 id == null -> {
-                                    Log.e("MainActivity", "[addMarkers] id of feature is null")
+                                    Log.e(fragTag, "[addMarkers] id of feature is null")
                                 }
                                 currency == null -> {
-                                    Log.e("MainActivity", "[addMarkers] currency of feature is null")
+                                    Log.e(fragTag, "[addMarkers] currency of feature is null")
                                 }
                                 value == null -> {
-                                    Log.e("MainActivity", "[addMarkers] value of feature is null")
+                                    Log.e(fragTag, "[addMarkers] value of feature is null")
                                 }
                                 docSnapshot["$currency|$id"] != null -> {
                                     // Coin has already been collected by the user. skip it
@@ -452,7 +245,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
                                     val valueDouble: Double = try {
                                         value.toDouble()
                                     } catch (e: NumberFormatException) {
-                                        Log.d("MainActivity", "[addMarkers] Casting value to double "
+                                        Log.d(fragTag, "[addMarkers] Casting value to double "
                                                 + "failed. Setting it to -1.0")
                                         // Setting the value to be negative will cause the icon
                                         // to be null, meaning the marker will not be added.
@@ -481,11 +274,11 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
                                     if (addedMarker != null) {
                                         // Add ID -> Marker and ID -> Feature to the maps so
                                         // we can identify and pick up nearby coins later
-                                        //coinIdToMarker[id] = addedMarker
-                                        //coinIdToFeature[id] = feature
-                                        //markerIdToCoinId[addedMarker.id] = id
+                                        coinIdToMarker[id] = addedMarker
+                                        coinIdToFeature[id] = feature
+                                        markerIdToCoinId[addedMarker.id] = id
                                     } else {
-                                        Log.e("MainActivity", "[addMarkers] Failed to add marker")
+                                        Log.e(fragTag, "[addMarkers] Failed to add marker")
                                     }
                                 }
                             }
@@ -506,7 +299,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
                 )
 
                 if (bank == null) {
-                    Log.e("MainActivity", "[addMarkers] bank marker is null")
+                    Log.e(fragTag, "[addMarkers] bank marker is null")
                 }
             }
         }
@@ -524,13 +317,12 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
      */
     override fun onMapReady(mapboxMap: MapboxMap?) {
         if (mapboxMap == null) {
-            Log.e("MainActivity", "[onMapReady] mapboxMap is null")
+            Log.e(fragTag, "[onMapReady] mapboxMap is null")
         } else {
             this.mapboxMap = mapboxMap
             this.mapboxMap?.uiSettings?.isCompassEnabled = true
             this.mapboxMap?.setOnMarkerClickListener { marker ->
-               //onMarkerClick(marker)
-                false
+               onMarkerClick(marker)
             }
 
             initializeLocationEngine()
@@ -543,35 +335,17 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
 
             if (localCachedMap == null) {
                 // Will need to download the map first before adding the markers.
-                Log.d("MainActivity", "[onMapReady] Downloading coins location map")
+                Log.d(fragTag, "[onMapReady] Downloading coins location map")
                 val dateString = "http://homepages.inf.ed.ac.uk/stg/coinz/${mainActivity?.currentDate}/coinzmap.geojson"
-                Log.d("MainActivity", "Fragment downloading from $dateString" )
+                Log.d(fragTag, "Fragment downloading from $dateString" )
                 DownloadFileTask(this).execute(dateString)
             } else {
-                Log.d("MainActivity", "[onMapReady] Adding markers for cached map")
+                Log.d(fragTag, "[onMapReady] Adding markers for cached map")
                 addMarkers(localCachedMap)
             }
         }
     }/*
 
-
-    /**
-     * Checks for permisions before making further calls to set up the location tracking.
-     * If the necessary location permissions have been granted, invokes the
-     * async call to get the [mapboxMap] ([MapboxMap]) instance.
-     * If not, instantiates a [PermissionsManager] and requests the location permissions.
-     */
-     * */
-    private fun enableLocation() {
-        if (PermissionsManager.areLocationPermissionsGranted(mainActivity)) {
-            Log.d("MainActivity", "[enableLocation] Permissions granted")
-            mapView?.getMapAsync(this)
-        } else {
-            Log.d("MainActivity", "[enableLocation] Permissions not granted")
-            permissionsManager = PermissionsManager(this)
-            permissionsManager.requestLocationPermissions(mainActivity)
-        }
-    }/*
 
     /**
      * Instantiates and sets up the [locationEngine].
@@ -606,11 +380,11 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
         val localLocationEngine = locationEngine
         when {
             localMapView == null -> {
-                Log.d("MainActivity", "[initializeLocationLayer] mapView is null")
+                Log.d(fragTag, "[initializeLocationLayer] mapView is null")
             }
 
             localMapBoxMap == null -> {
-                Log.d("MainActivity", "[initializeLocationLayer] mapboxMap is null")
+                Log.d(fragTag, "[initializeLocationLayer] mapboxMap is null")
             }
 
             else -> {
@@ -635,31 +409,6 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
                 LatLng(location.latitude, location.longitude)))
     }
 
-    override fun onExplanationNeeded(permissionsToExplain: MutableList<String>?) {
-        // TODO present dialog stating why permissions are needed
-    }
-
-    /**
-     * Listener for location permission results.
-     * If granted, invokes [enableLocation].
-     *
-     * @param granted whether the permission was granted.
-     */
-    override fun onPermissionResult(granted: Boolean) {
-        if (granted) {
-            enableLocation()
-        } else {
-            Log.e("MainActivity", "[onPermissionResult] Permissions not granted")
-            // TODO explain to user why necessary
-        }
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>,
-                                            grantResults: IntArray) {
-        permissionsManager.onRequestPermissionsResult(requestCode, permissions, grantResults)
-    }
-
-
     /**
      * Listener for the user's [Location] changing, updating the recorded and displayed location.
      *
@@ -670,7 +419,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
             originLocation = location
             setCameraPosition(location)
         }
-    }/*
+    }
 
     /**
      * Approximates the distance between to latitude/longitude positions cheaply.
@@ -726,12 +475,11 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
     /**
      * Requests location updates from the [locationEngine] upon the activity being connected.
      */
-     * */
     @SuppressWarnings("MissingPermission")
     override fun onConnected() {
-        Log.d("MainActivity", "[onConnected] Requesting location updates")
+        Log.d(fragTag, "[onConnected] Requesting location updates")
         locationEngine.requestLocationUpdates()
-    }/*
+    }
 
     /**
      * Collects a desired coin, adding it to the users wallet and updating the map.
@@ -748,14 +496,14 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
 
         if (localComboTimer == null) {
             // There is currently no timer active. Start one!
-            Log.d("MainActivity", "[collectCoin] No combo active")
+            Log.d(fragTag, "[collectCoin] No combo active")
             localComboTimeRemaining = 30000
             localComboTimer = getComboTimerInstance(localComboTimeRemaining)
         } else {
             if (localComboTimeRemaining == null) {
-                Log.e("MainActivity", "[collectCoin] Combo timer is non-null but remaining time is")
+                Log.e(fragTag, "[collectCoin] Combo timer is non-null but remaining time is")
             } else {
-                Log.d("MainActivity", "[collectCoin] Combo found with comboTimer $localComboTimer"
+                Log.d(fragTag, "[collectCoin] Combo found with comboTimer $localComboTimer"
                         + ", time remaining $localComboTimeRemaining and factor $localComboFactor")
                 // There's a combo active -- extend it by fifteen seconds!
                 localComboTimer.cancel()
@@ -774,13 +522,13 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
 
         when {
             value == null -> {
-                Log.e("MainActivity", "[collectCoin] Coin value is null")
+                Log.e(fragTag, "[collectCoin] Coin value is null")
             }
             currency == null -> {
-                Log.e("MainActivity", "[collectCoin] Coin currency is null")
+                Log.e(fragTag, "[collectCoin] Coin currency is null")
             }
             marker == null -> {
-                Log.e("MainActivity", "[collectCoin] marker is null")
+                Log.e(fragTag, "[collectCoin] marker is null")
             }
             else -> {
                 // Everything looks good. Check if there's a combo active
@@ -825,50 +573,50 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
         val coinJsonString = try {
             coin.toJSON().toString()
         } catch (e: JSONException) {
-            Log.e("MainActivity", "[updateWallet] Encountered JSON exception: $e")
+            Log.e(fragTag, "[updateWallet] Encountered JSON exception: $e")
             null
         }
 
         if (coinJsonString == null) {
-            Log.e("MainActivity", "[updateWallet] Failed to get JSON-string for coin with id $coinId")
+            Log.e(fragTag, "[updateWallet] Failed to get JSON-string for coin with id $coinId")
             // We don't want to push this to the database. Return early
             return
         }
         // Generate a map of currency|id -> json-string as expected by the database
         val coinMap: Map<String, String> = mapOf("$currency|$coinId" to coinJsonString)
 
-        firestoreWallet?.get()?.run {
+        mainActivity?.firestoreWallet?.get()?.run {
             addOnSuccessListener { docSnapshot ->
                 if (docSnapshot.exists()) {
                     // The wallet already exists, add or update this coin's values
-                    firestoreWallet?.update(coinMap)?.run {
+                    mainActivity?.firestoreWallet?.update(coinMap)?.run {
                         addOnSuccessListener {
-                            Log.d("MainActivity",
+                            Log.d(fragTag,
                                     "[updateWallet] Found wallet, added coin $coinId of " +
                                             "currency $currency with value $value")
                             snackbarLayout.snackbar("Collected $roundedValue $currency")
                         }
                         addOnFailureListener { e ->
-                            Log.e("MainActivity", "[updateWallet] Doc exists but update failed: $e")
+                            Log.e(fragTag, "[updateWallet] Doc exists but update failed: $e")
                         }
                     }
                 } else {
                     // Doc doesn't exist, create it
-                    Log.d("MainActivity", "[updateWallet] Setting up new doc")
-                    firestoreWallet?.set(coin)?.run {
+                    Log.d(fragTag, "[updateWallet] Setting up new doc")
+                    mainActivity?.firestoreWallet?.set(coin)?.run {
                         addOnSuccessListener {
-                            Log.d("MainActivity","[updateWallet] Created wallet, added coin $coinId of" +
+                            Log.d(fragTag,"[updateWallet] Created wallet, added coin $coinId of" +
                                     " currency $currency with value $value")
                             snackbarLayout.snackbar("Collected $roundedValue $currency")
                         }
                         addOnFailureListener { e ->
-                            Log.e("MainActivity", "[updateWallet] Failed to create doc: $e")
+                            Log.e(fragTag, "[updateWallet] Failed to create doc: $e")
                         }
                     }
                 }
             }
             addOnFailureListener { e ->
-                Log.e("MainActivity", "[collectButton] Wallet get failed: $e")
+                Log.e(fragTag, "[collectButton] Wallet get failed: $e")
             }
         }
     }
@@ -880,7 +628,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
      */
     private fun removeMarker(id: String, marker: Marker) {
         mapboxMap?.removeMarker(marker)
-        Log.d("MainActivity", "[removeMarkers] Removed marker of $id")
+        Log.d(fragTag, "[removeMarkers] Removed marker of $id")
 
         // Remove the coin id from the maps as it is no longer needed, and we do not want
         // to check for its location again
@@ -907,8 +655,8 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
             when {
                 marker.title == "BANK" -> {
                     //if (distance <= 25.0) {
-                        val intent = Intent(this, BankActivity::class.java)
-                        intent.putExtra(USER_EMAIL, currentUserEmail)
+                        val intent = Intent(mainActivity, BankActivity::class.java)
+                        intent.putExtra(USER_EMAIL, mainActivity?.currentUserEmail)
                         intent.putExtra(EXCHANGE_RATES, rates.toString())
                         startActivity(intent)
                     //} else {
@@ -925,12 +673,12 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
                     if (distance <= 25.0) {
                         val coinId = markerIdToCoinId[marker.id]
                         if (coinId == null) {
-                            Log.e("MainActivity", "[OnMarkerClick] null coin id for ${marker.id}")
+                            Log.e(fragTag, "[OnMarkerClick] null coin id for ${marker.id}")
                         } else {
                             collectCoin(coinId)
                         }
                     } else {
-                        toast("Too far away from coin")
+                        mainActivity?.toast("Too far away from coin")
                     }
                     return true
                 }
@@ -957,7 +705,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
                    val timerText: Int = (millisRemaining / 1000).toInt()
                    comboTimerText.text = "$timerText"
                 } catch (e: NumberFormatException) {
-                    Log.e("MainActivity", "[getComboTimerInstance][onTick] Exception: $e")
+                    Log.e(fragTag, "[getComboTimerInstance][onTick] Exception: $e")
                 }
                 comboTimeRemaining = millisRemaining
             }
@@ -970,5 +718,5 @@ class MapFragment : Fragment(), OnMapReadyCallback, PermissionsListener, Locatio
                 comboFactor = null
             }
         }
-    }*/
+    }
 }
