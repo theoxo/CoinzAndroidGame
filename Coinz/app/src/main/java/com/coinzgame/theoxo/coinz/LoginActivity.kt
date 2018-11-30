@@ -220,12 +220,12 @@ class LoginActivity : AppCompatActivity() {
         if (extras == null) {
             Log.d(tag, "[onResume] No extras in intent")
         } else {
-            val shouldLogoutUser : Boolean = extras.getBoolean(LOGOUT_FLAG, false)
+            val shouldLogoutUser = extras.getBoolean(LOGOUT_FLAG, false)
             if (shouldLogoutUser) {
                 Log.d(tag, "[onResume] Logging out the user")
                 mAuth?.signOut()
             } else {
-                Log.d(tag, "[onResume] Extras non-null but log out not requested")
+                Log.w(tag, "[onResume] Extras non-null but log out not requested")
             }
         }
     }

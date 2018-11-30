@@ -45,6 +45,15 @@ class MessageCreationActivity : AppCompatActivity() {
 
         sendButton.setOnClickListener { _ -> generateMessage() }
 
+        // Set up a regex that matches ".", "..", and any "__.*__"
+        // where only in the last on is period a special character
+        // Do this by escaping all the literals involed for safety.
+        // This will be needed to ensure the target email is a valid collection reference key
+        val escapedPeriod = Regex.escape(".")
+        val escapedUnderscore = Regex.escape("_")
+        val invalidCollectionRegex = Regex("$escapedPeriod|$escapedPeriod$escapedPeriod"
+            + "|$escapedUnderscore$escapedUnderscore.*$escapedUnderscore$escapedUnderscore")
+
         targetEmail.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
                 // Not interested
@@ -55,10 +64,19 @@ class MessageCreationActivity : AppCompatActivity() {
             }
 
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                sendButton.isEnabled = !(targetEmail.text.isEmpty()
-                                         || targetEmail.text.toString() == currentUserEmail
-                                         || '~' in targetEmail.text
-                                         || '/' in targetEmail.text)
+                // Enable the send message button only if it is safe to do so.
+                // This means we do not want the target email to be empty, we do not want
+                // it to be ourselves, and as this will be used to reference a colleciton
+                // we must adhere to firestore's assumptions as defined here:
+                // https://firebase.google.com/docs/firestore/quotas
+                // Meaning it must not contain "/", be only "." or "..",
+                // not match the regex "__.*__",
+                // and not be more than 1500 bytes long.
+                val targetEmailString = targetEmail.text.toString()
+                sendButton.isEnabled = ((!targetEmailString.isEmpty())
+                        && targetEmailString.all { c -> c != '/' }
+                        && (!invalidCollectionRegex.matches(targetEmailString))
+                        && targetEmailString.toByteArray().size <= 1500)
             }
         })
 

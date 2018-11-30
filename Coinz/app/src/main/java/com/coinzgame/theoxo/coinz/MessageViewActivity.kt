@@ -26,16 +26,20 @@ class MessageViewActivity : AppCompatActivity() {
         val messageJSONStr = intent?.getStringExtra(MESSAGE_JSON_STRING)
         val message = Message(JSONObject(messageJSONStr))
 
-        // Update the textviews
-        title = "${message.senderEmail},\n${message.timestamp}"
-
-        messageTextView.text = message.messageText
+        // Update the title and  textview accordingly
+        title = "${message.senderEmail}"
+        messageTextView.text = getString(R.string.messageText, message.timestamp,
+                message.messageText)
 
         val attachedCoins = message.attachedCoins
         if (attachedCoins == null || attachedCoins.size == 0) {
             Log.d(tag, "[onCreate] No attached coins found")
+            // Since there are no coins attached, we don't need to set an adapter to
+            // list view which would be showing them.
         } else {
-            val attachedCoinsAdapter = CoinAdapter(this, attachedCoins, false)
+            // There is at least one coin attached, so get an adapter for the listview and set it
+            val attachedCoinsAdapter = CoinAdapter(this, attachedCoins,
+                    false)
             messageAttachedCoinsListView.adapter = attachedCoinsAdapter
         }
     }

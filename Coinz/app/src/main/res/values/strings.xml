@@ -20,4 +20,12 @@
         Loading your bank data…
     </string>
 
+    <string name="coinListItemText">
+        %s: %.2f
+    </string>
+
+    <string name="messageText">
+        %s\n\n%s
+    </string>
+
 </resources>

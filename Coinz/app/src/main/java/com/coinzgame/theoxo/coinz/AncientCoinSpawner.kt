@@ -45,6 +45,8 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
         val thisDate = currentDate
 
         if (result == NETWORK_ERROR) {
+            // The background download encountered an exception,
+            // construct an appropriate notification and let the user know
             val title = "Coinz Network Error"
             val text = ("Ancient Coins will not be able to spawn before today's map is "
                         + "successfully downloaded.")
@@ -88,6 +90,8 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
         Log.d(tag, "onReceive fired")
         // Save the context received so it can be re-used for notifications
         this.context = context
+
+        // Process the intent according to its action
         if (intent?.action == Intent.ACTION_BOOT_COMPLETED || intent?.action == FIRST_RUN_ACTION) {
             // Phone either just finished booting up or we are running the app for the first time.
             // Set up the alarms to listen for the desired times.
@@ -101,21 +105,20 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
                 for (hour in desiredHours) {
                     // Set up two alarms; one for the hour precisely and one for half an hour later.
 
+                    // Set ourselves to be the receiver of the intents for the alarms
+                    // and set the action so we can identify it when we receive it.
+                    val alarmIntent = Intent(context, AncientCoinSpawner::class.java)
+                    alarmIntent.action = ALARM_ACTION
+
+                    // Get the current system time so we can build pseudo-unique ids for the intents
                     val currentSystemTime = System.currentTimeMillis()
 
+                    // Set up the calendar for the first intent
                     val alarmCalendar : Calendar = Calendar.getInstance().apply {
                         timeInMillis = currentSystemTime
                         set(Calendar.HOUR_OF_DAY, hour)
                         set(Calendar.MINUTE, 0)
                     }
-
-                    val alarmIntent = Intent(context, AncientCoinSpawner::class.java)
-                    alarmIntent.action = ALARM_ACTION
-                    var alarmPendingIntent =
-                            PendingIntent.getBroadcast(context,
-                                    currentSystemTime.toInt()+hour,
-                                    alarmIntent,
-                                    PendingIntent.FLAG_ONE_SHOT)
 
                     if (alarmCalendar.timeInMillis < currentSystemTime) {
                         // If the time has already passed today, set the alarm to start tomorrow
@@ -123,6 +126,15 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
                         alarmCalendar.add(Calendar.DATE, 1)
                     }
 
+                    var alarmPendingIntent =
+                            PendingIntent.getBroadcast(context,
+                                    currentSystemTime.toInt()+hour,
+                                    alarmIntent,
+                                    PendingIntent.FLAG_ONE_SHOT)
+
+
+
+                    // Set up the first alarm.
                     alarmManager?.setRepeating(
                             AlarmManager.RTC,
                             alarmCalendar.timeInMillis,
@@ -130,6 +142,7 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
                             alarmPendingIntent
                     )
 
+                    // Set up the calendar for the second alarm at 30 minutes past the hour
                     val alarmCalendarHalf : Calendar = Calendar.getInstance().apply {
                         timeInMillis = currentSystemTime
                         set(Calendar.HOUR_OF_DAY, hour)
@@ -149,6 +162,8 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
                             PendingIntent.getBroadcast(context,
                                     currentSystemTime.toInt()+hour+1,
                                     alarmIntent, PendingIntent.FLAG_CANCEL_CURRENT)
+
+                    // Set up the second alarm.
                     alarmManager?.setRepeating(
                             AlarmManager.RTC,
                             alarmCalendarHalf.timeInMillis,
@@ -157,12 +172,14 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
                     )
                 }
 
-                Log.d(tag, "Set up alarms")
+                Log.d(tag, "[onReceive] Set up alarms")
             }
+
         } else if (intent?.action == ALARM_ACTION) {
             // Have received one of our alarms. Attempt to spawn ancient coins
-            Log.d(tag, "Received alarm")
+            Log.d(tag, "[onReceive] Received alarm")
             if (context != null) {
+
                 // Get current date
                 val year : String = Calendar.getInstance().get(Calendar.YEAR).toString()
                 // Add one to the month as it is 0-indexed
@@ -180,6 +197,9 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
                     day = "0$day"
                 }
                 currentDate = "$year/$month/$day"
+
+                // Get the data stored on the system to see if the user has already downloaded
+                // today's map
                 val storedPrefs = context.getSharedPreferences(PREFERENCES_FILE,
                         Context.MODE_PRIVATE)
                 val cachedMap = storedPrefs.getString(SAVED_MAP_JSON, null)
@@ -193,17 +213,20 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
                     val dateString = "http://homepages.inf.ed.ac.uk/stg/coinz/$currentDate/coinzmap.geojson"
                     DownloadFileTask(this).execute(dateString)
                 } else {
-                    // The user has already downloaded today's map.
+                    // The user has already downloaded today's map, go ahead and try to spawn the
+                    // ancient coins for this alarm.
                     spawnAncientCoins(cachedMap)
                 }
-
-
             }
+        }  else {
+            // These are the only types of intents we expect.
+            Log.w(tag, "[onReceive] Could not recognize intent action ${intent?.action}")
         }
     }
 
     /**
      * Attempts to spawn the ancient coins for this alarm.
+     * If successful will invoke [generateNotificationForAncientCoinsSpawned].
      *
      * @param geoJsonString the GeoJSON String with today's coins.
      */
@@ -211,22 +234,27 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
 
         val preferenceContext = context
         if (preferenceContext == null) {
+            // If the context is null we won't be able to store the ancient coins we've spawned.
+            // Throw an error log and return early
             Log.e(tag, "[spawnAncientCoins] the context is null so cannot obtain stored "
                     + "preferences. Returning")
             return
         }
+
+        // Set up the references to the shared preferences file
         val storedPrefs = preferenceContext.getSharedPreferences(PREFERENCES_FILE,
                 Context.MODE_PRIVATE)
+        val editor: SharedPreferences.Editor = storedPrefs.edit()
+
+        // Keep track of which coins spawned so we can build the notification
+        val ancientCoinsSpawned = ArrayList<JSONObject>()
+
+        // Get the top coin values in the order SHIL, QUID, DOLR, PENY
         val topCoinValues = getTopCoinValues(geoJsonString)
 
-        val ancientCoinsSpawned = ArrayList<JSONObject>()
+        // Attempt to spawn an ancient SHIL, storing the result on the device if successful,
+        // and otherwise storing the empty string
         val shilAncientCoin = generateAncientCoin(topCoinValues[0], "SHIL")
-        val quidAncientCoin = generateAncientCoin(topCoinValues[1], "QUID")
-        val dolrAncientCoin = generateAncientCoin(topCoinValues[2], "DOLR")
-        val penyAncientCoin = generateAncientCoin(topCoinValues[3], "PENY")
-
-        val editor: SharedPreferences.Editor = storedPrefs.edit()
-        // TODO make the below neater
         if (shilAncientCoin != null) {
             Log.d(tag, "Saving an ancient shil coin")
             ancientCoinsSpawned.add(shilAncientCoin)
@@ -235,6 +263,9 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
             Log.d(tag, "Setting saved ancient shil coin to empty string")
             editor.putString(ANCIENT_SHIL, "")
         }
+
+        // Now do the same for QUID
+        val quidAncientCoin = generateAncientCoin(topCoinValues[1], "QUID")
         if (quidAncientCoin != null) {
             ancientCoinsSpawned.add(quidAncientCoin)
             editor.putString(ANCIENT_QUID, quidAncientCoin.toString())
@@ -243,6 +274,9 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
             Log.d(tag, "Setting saved ancient quid coin to empty string")
             editor.putString(ANCIENT_QUID, "")
         }
+
+        // Next up is the DOLR currency
+        val dolrAncientCoin = generateAncientCoin(topCoinValues[2], "DOLR")
         if (dolrAncientCoin != null) {
             ancientCoinsSpawned.add(dolrAncientCoin)
             editor.putString(ANCIENT_DOLR, dolrAncientCoin.toString())
@@ -251,6 +285,9 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
             Log.d(tag, "Setting saved ancient dolr coin to empty string")
             editor.putString(ANCIENT_DOLR, "")
         }
+
+        // Finally, attempt to spawn an ancient PENY.
+        val penyAncientCoin = generateAncientCoin(topCoinValues[3], "PENY")
         if (penyAncientCoin != null) {
             ancientCoinsSpawned.add(penyAncientCoin)
             editor.putString(ANCIENT_PENY, penyAncientCoin.toString())
@@ -260,9 +297,11 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
             editor.putString(ANCIENT_PENY, "")
         }
 
+        // Save the changes to the preferences file.
         editor.apply()
 
         if (ancientCoinsSpawned.isNotEmpty()) {
+            // We have successfully generated at least 1 ancient coin; let the user know!
             generateNotificationForAncientCoinsSpawned(ancientCoinsSpawned)
         }
     }
@@ -283,6 +322,8 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
         if (features == null) {
             Log.e(tag, "[getTopCoinValues] features are null")
         } else {
+            // Feature-s are non-null. Loop over them safely, updating the
+            // highest seen value for each currency as we go along
             for (feature in features) {
                 // Extract information from the feature
                 val properties: JsonObject? = feature.properties()
@@ -333,7 +374,7 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
         val p = ThreadLocalRandom.current().nextDouble(0.0, 1.0)
         if (p < ANCIENT_COIN_SPAWN_CHANCE) {
             // Success! The coin shall be spawned.
-            // Get it's value as 5 * the given top value of its currency:
+            // Make its value 5 * the given top value of its currency:
             val value = (topCoinValue * 5).toString()
             // Randomly generate its location on the UoE campus
             val lat = ThreadLocalRandom.current().nextDouble(55.942617, 55.946233)
@@ -342,6 +383,8 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
             // Generate a pseudo-unique id for the ancient coin
             val id = "ANCIENT$currency${System.currentTimeMillis().toInt()}"
 
+            // Construct an appropriate Geo-JSON for the coin, following the same
+            // style as the downloaded maps.
             json = JSONObject()
             json.put("type", "Feature")
             val propertiesJson = JSONObject()
@@ -379,11 +422,13 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
             return
         }
 
+        // Create an appropriate title
         val notificationTitle : String = when (coins.size) {
             1 -> "An Ancient Coin Just Spawned!"
             else -> "${coins.size} Ancient Coins Just Spawned!"
         }
 
+        // Create the notification's main text body
         var notificationBody = ""
         for (coinJson in coins) {
             // Add a short description for reach ancient coin
@@ -392,6 +437,7 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
             notificationBody += "* $value $currency"
         }
 
+        // Attempt to fire off the notification
         displayNotificationWithTitleAndText(notificationTitle, notificationBody)
 
     }
@@ -409,6 +455,7 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
 
         if (notificationContext == null) {
             // Won't be able to set up the notification. Return early
+            Log.e(tag, "[displayNotificationWithTitleAndText] Context is null, returning.")
             return
         }
 
@@ -423,14 +470,16 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
             notificationManager?.createNotificationChannel(channel)
         }
 
-        // Build notification
+        // Build an expendable notification which shows the full text upon expansion
         val notificationBuilder = NotificationCompat.Builder(notificationContext, COINZ_CHANNEL_ID)
                 .setSmallIcon(R.mipmap.coinz_logo)
                 .setContentTitle(title)
-                .setContentText(text)
+                .setContentText("${text.take(15)}...")
+                .setStyle(NotificationCompat.BigTextStyle()
+                        .bigText(text))
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
 
-        // display the notification
+        // Display the notification on the user's device.
         with(NotificationManagerCompat.from(notificationContext)) {
             notify(0, notificationBuilder.build())
         }

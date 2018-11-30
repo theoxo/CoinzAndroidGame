@@ -23,6 +23,8 @@ class CoinIconFactory(private val iconFactory: IconFactory) {
      */
     fun getIconForCoin(id: String, currency: String, value: Double) : Icon? {
         return when {
+            // Begin by checking if the coin is Ancient. If so,
+            // the icon will be the same regardless of the coins value.
             (id.startsWith("ANCIENT")
                     && currency == "SHIL") -> {
                 Log.d(tag, "[getIconForCoin] Found an ancient SHIL $id")
@@ -47,6 +49,8 @@ class CoinIconFactory(private val iconFactory: IconFactory) {
                 iconFactory.fromResource(R.mipmap.ancient_peny)
             }
 
+            // For non-ancient coins, invoke the appropriate method accordingly to
+            // the coin's currency to get an icon which depends on the value of the coin.
             currency == "SHIL" -> {
                 getSHILIcon(value)
             }
@@ -62,6 +66,8 @@ class CoinIconFactory(private val iconFactory: IconFactory) {
             currency == "QUID" -> {
                 getQUIDIcon(value)
             }
+
+            // If all else has failed, we cannot recognize the coin which we were given.
             else -> {
                 Log.e(tag, "[getIconForCoin] Unrecognized currency $currency for id $id")
                 null

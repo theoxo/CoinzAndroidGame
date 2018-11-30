@@ -19,17 +19,17 @@ import java.util.*
 
 /**
  * The app's main Activity.
- * Handles various aspects of loading and displaying the map,
- * tracking the user's location, marking the coins on the map and picking them up.
+ * Handles switching between and containing the three main fragments,
+ * [MapFragment], [InboxFragment], and [AccountFragment].
+ * Also stores references to the user's email and firestore documents
+ * for easy access by the fragments.
  */
 class MainActivity : AppCompatActivity(), PermissionsListener,
-        BottomNavigationView.OnNavigationItemSelectedListener {//, LocationEngineListener,
-        //OnMapReadyCallback, DownloadCompleteListener,
-        //BottomNavigationView.OnNavigationItemSelectedListener {
+        BottomNavigationView.OnNavigationItemSelectedListener {
 
     private val tag = "MainActivity"
 
-    // Local variables related to the location tracking and displaying
+    // PermissionsManages to request permissions with if needed
     private lateinit var permissionsManager : PermissionsManager
 
     // Locally saved data tracking
@@ -38,20 +38,28 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
     internal var cachedMap : String? = null
     internal var ancientCoins = ArrayList<Feature>()
 
-    // Firebase Firestore database
+    // Firebase Firestore database references
     private var firestore :  FirebaseFirestore? = null
     internal var firestoreWallet : DocumentReference? = null
     internal var firestoreInbox: DocumentReference? = null
     internal var currentUserEmail : String? = null
 
+    // The three main fragments which the app operates with
     private var mapFragment: MapFragment = MapFragment()
     private var inboxFragment: InboxFragment = InboxFragment()
     private var accountFragment: AccountFragment = AccountFragment()
 
+    /**
+     * Sets up the local firestore references and greets the user if they are new.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Mapbox.getInstance(this, MAPBOX_KEY)
         setContentView(R.layout.activity_main)
+
+        // Set up the Mapbox instance using our given API key
+        Mapbox.getInstance(this, MAPBOX_KEY)
+
+        // Get the data which was passed onto us from the previous LoginActivity
         currentUserEmail = intent?.getStringExtra(USER_EMAIL)
         val firstRunOfApp = intent?.getBooleanExtra(FIRST_TIME_RUNNING, false)
         Log.d(tag, "[onCreate] Received user email $currentUserEmail")
@@ -65,8 +73,10 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
                         + "have an active internet connection, and your location service on and "
                         + "set to high accuracy mode.\n\nUse the floating action buttons to "
                         + "switch between inspecting coins and picking them up when you "
-                        + "click on them.\n\nYou can then deposit the coins you've collected "
-                        + "into the bank in exchange for gold, or send them to your friends!")
+                        + "click on them.\nPicking a coin up starts a combo (displayed in the top "
+                        + "right -- utilize this to maximize your income!\n\n"
+                        + "You can then exchange the coins you've collected "
+                        + "for gold by visiting the bank, and send spare change to your friends.")
                 title = "Hello there... Looks like you're new!"
                 positiveButton("Got it!"){}
             }.show()
@@ -83,17 +93,19 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
                 .build()
         firestore?.firestoreSettings = settings
 
+        // Copy the user email field for guaranteed thread safety before
+        // setting up the firestore references
         val emailTag = currentUserEmail
         if (emailTag != null) {
             firestoreWallet = firestore?.collection(emailTag)?.document(WALLET_DOCUMENT)
             firestoreInbox = firestore?.collection(emailTag)?.document(INBOX_DOCUMENT)
         } else {
-            Log.d(tag, "[onCreate] emailTag is null")
+            Log.w(tag, "[onCreate] emailTag is null")
         }
     }
 
     /**
-     * Fetches the preferences stored on the device if necessary.
+     * Fetches the preferences stored on the device and invokes [checkLocationPermission].
      */
     override fun onStart() {
         super.onStart()
@@ -137,7 +149,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
             }
         }
 
-        // Also get the current ancient coins
+        // Also get the current ancient coins and save them for MapFragment
         val ancientShilCoinString = storedPrefs.getString(ANCIENT_SHIL, null)
         if (ancientShilCoinString != null && ancientShilCoinString.isNotEmpty()) {
             Log.d(tag, "[onStart] Found an ancient shil coin saved")
@@ -162,6 +174,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
             ancientCoins.add(Feature.fromJson(ancientPenyCoinString))
         }
 
+        // Finally ensure we have been given the necessary permission to get the user's location
         checkLocationPermission()
     }
 
@@ -198,17 +211,23 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
      * @param item the menu item clicked
      */
     override fun onNavigationItemSelected(item : MenuItem): Boolean {
-        Log.d(tag, "[onNavigationitemSelected] Clicked")
+        Log.d(tag, "[onNavigationItemSelected] Clicked")
         when (item.itemId) {
             R.id.account_nav -> startAccountFragment()
             R.id.messaging_nav -> startInboxFragment()
-            else -> checkLocationPermission()
+            else -> {
+                // Must check if we have permission to track the user's location before
+                // setting up the MapFragment
+                checkLocationPermission()
+            }
         }
+
+        // Let it be known that we have handled the event appropriately
         return true
     }
 
     /**
-     * Starts a new [AccountFragment].
+     * Replaces any currently active fragment with [AccountFragment].
      */
     private fun startAccountFragment() {
         Log.d(tag, "[startAccountFragment] Invoked")
@@ -221,7 +240,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
     }
 
     /**
-     * Starts a new [InboxFragment].
+     * Replaces any currently active fragment with [InboxFragment].
      */
     private fun startInboxFragment() {
         Log.d(tag, "[startInboxFragment] Invoked")
@@ -233,53 +252,66 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
         Log.d(tag, "Committed transaction to InboxFragment")
     }
 
+    /**
+     * Replaces any currently active fragment with [MapFragment].
+     */
+    private fun startMapFragment() {
+        Log.d(tag, "[startMapFragment] Invoked")
+        val fManager = supportFragmentManager
+        val fTransaction = fManager.beginTransaction()
+        fTransaction.replace(R.id.fragmentContainer, mapFragment)
+        fTransaction.addToBackStack(null)
+        fTransaction.commit()
+        Log.d(tag, "Committed transaction to MapFragment")
+    }
 
 
     /**
-     * Checks for permissions before making further calls to set up the location tracking.
-     * If the necessary location permissions have been granted, invokes the
-     * async call to get the [mapboxMap] ([MapboxMap]) instance.
-     * If not, instantiates a [PermissionsManager] and requests the location permissions.
+     * Checks for permissions before setting up the [mapFragment].
+     * If they have not been granted, instantiates [permissionsManager] and requests
+     * the location permissions.
      */
     private fun checkLocationPermission() {
         if (PermissionsManager.areLocationPermissionsGranted(this)) {
             Log.d(tag, "[enableLocation] Permissions granted")
-            Log.d(tag, "Setting up ftransaction to MapFragment")
-            val fManager = supportFragmentManager
-            val fTransaction = fManager.beginTransaction()
-            fTransaction.replace(R.id.fragmentContainer, mapFragment)
-            fTransaction.addToBackStack(null)
-            fTransaction.commit()
-            Log.d(tag, "Committed transaction to MapFragment")
+            // We have the necessary permissions to track the user location and can safely
+            // set up a MapFragment
+            startMapFragment()
         } else {
             Log.d(tag, "[enableLocation] Permissions not granted")
+            // The permissions have not been granted. Before doing anything else, request them
             permissionsManager = PermissionsManager(this)
             permissionsManager.requestLocationPermissions(this)
         }
     }
 
     override fun onExplanationNeeded(permissionsToExplain: MutableList<String>?) {
-        // TODO present dialog stating why permissions are needed
+        // Recall that the only permission we need to request is the user location.
+        alert {
+            title = "We need you!... to give us your location."
+            message = ("Coinz is a location-driven game.\nIn order to function properly, "
+                    + "we needs your permission to track your location. Otherwise we won't "
+                    + "be able to tell when you're close enough to pick up a coin!")
+            positiveButton("Got it!"){
+                // Try again
+                checkLocationPermission()
+            }
+        }.show()
     }
 
     /**
      * Listener for location permission results.
-     * If granted, invokes [enableLocation].
+     * If granted, invokes sets up [mapFragment].
      *
      * @param granted whether the permission was granted.
      */
     override fun onPermissionResult(granted: Boolean) {
         if (granted) {
-            Log.d(tag, "Setting up ftransaction to MapFragment")
-            val fManager = supportFragmentManager
-            val fTransaction = fManager.beginTransaction()
-            fTransaction.replace(R.id.fragmentContainer, mapFragment)
-            fTransaction.addToBackStack(null)
-            fTransaction.commit()
-            Log.d(tag, "Committed transaction to MapFragment")
+          startMapFragment()
         } else {
             Log.e(tag, "[onPermissionResult] Permissions not granted")
-            // TODO explain to user why necessary
+            // Explain to the user why we need the location permission
+            onExplanationNeeded(null)
         }
     }
 
