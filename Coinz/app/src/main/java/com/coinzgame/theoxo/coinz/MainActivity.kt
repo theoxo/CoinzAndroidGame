@@ -34,7 +34,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
 
     // Locally saved data tracking
     internal var currentDate : String? = null // FORMAT YYYY/MM/DD
-    internal var lastDownloadDate : String? = null
+    private var lastDownloadDate : String? = null
     internal var cachedMap : String? = null
     internal var ancientCoins = ArrayList<Feature>()
 

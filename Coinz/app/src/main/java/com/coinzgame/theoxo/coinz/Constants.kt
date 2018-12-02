@@ -35,6 +35,7 @@ const val ANCIENT_COIN_SPAWN_CHANCE = 0.03125
 const val ALARM_ACTION = "AncientCoinAlarmAction"
 const val COINZ_CHANNEL_ID = "CoinzNotificationChannel"
 const val COINZ_CHANNEL_NAME = "Coinz Notifications"
+const val OVERWRITE_ALARM_ACTION = "OverwriteAlarmAction"
 
 // Local saved data file
 const val PREFERENCES_FILE = "CoinzPrefsFile"
@@ -46,3 +47,14 @@ const val SAVED_MAP_JSON = "SavedMapJson"
 
 // Network error tag
 const val NETWORK_ERROR = "Unable to load content, check your internet connection"
+
+// Tags relating to the bank and its marker on the map
+const val BANK_MARKER_TITLE = "BANK"
+const val BANK_MARKER_LATITUDE = 55.945459
+const val BANK_MARKER_LONGITUDE = -3.188707
+
+// Longitudes and latitudes which define the valid play area (i.e. the UoE campus)
+const val UOE_MIN_LATITUDE = 55.942617
+const val UOE_MAX_LATITUDE = 55.946233
+const val UOE_MIN_LONGITUDE = -3.192473
+const val UOE_MAX_LONGITUDE = -3.18419

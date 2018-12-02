@@ -54,12 +54,10 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
     // Map variables
     private var mapView : MapView? = null
     private var mapboxMap : MapboxMap? = null
-    private val bankLocation : LatLng = LatLng(55.945459, -3.188707)
+    private val bankLocation : LatLng = LatLng(BANK_MARKER_LATITUDE, BANK_MARKER_LONGITUDE)
 
     // Keep track of data related to the coins
-    private lateinit var coinIdToMarker : MutableMap<String, Marker>
-    private lateinit var coinIdToFeature : MutableMap<String, Feature>
-    private lateinit var markerIdToCoinId : MutableMap<Long, String>
+    private lateinit var markerIdToCoin : MutableMap<Long, Coin>
 
     // Today's rates
     private var rates : JSONObject? = null
@@ -77,7 +75,8 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
         mainActivity = context as? MainActivity
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
+                              savedInstanceState: Bundle?): View? {
         Log.d(fragTag, "Fragment created")
         return inflater.inflate(R.layout.fragment_map, container, false)
 
@@ -92,9 +91,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
         fab_inspect.setOnClickListener { _ -> switchMode() }
         fab_pickup.setOnClickListener {_ -> switchMode() }
 
-        coinIdToMarker = HashMap()
-        coinIdToFeature = HashMap()
-        markerIdToCoinId = HashMap()
+        markerIdToCoin = HashMap()
 
         mapView?.getMapAsync(this)
 
@@ -103,7 +100,6 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
     /**
      * Switches the user mode between coin pick up and coin inspection.
      */
-
     private fun switchMode() {
         if (modeIsPickup) {
             // In pick up mode, want to switch to inspect mode.
@@ -167,7 +163,6 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
             mainActivity?.toast(NETWORK_ERROR)
             mainActivity?.finish()
         } else {
-            mainActivity?.lastDownloadDate = mainActivity?.currentDate
             mainActivity?.cachedMap = result  // store the cachedMap so we can save it onStop
             addMarkers(result)
         }
@@ -181,14 +176,18 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
      */
     private fun addMarkers(geoJsonString : String) {
         Log.d(fragTag, "addMarkers invoked")
-        val features : MutableList<Feature>? = FeatureCollection.fromJson(geoJsonString).features()
-        // Also add any and all currently active ancient coins
+
+        // First of all ensure we have a non-null copy of the activity we are attached to
+        // as this will be needed to access firestore data etc
         val mainActivityCp = mainActivity // copy field for thread safety
         if (mainActivityCp == null) {
-            Log.w(fragTag, "[addMarkers] mainActivity is null, can't get ancient coins")
-        } else {
-            features?.addAll(mainActivityCp.ancientCoins)
+            Log.w(fragTag, "[addMarkers] mainActivity is null, returning early")
+            return
         }
+
+        val features : MutableList<Feature>? = FeatureCollection.fromJson(geoJsonString).features()
+        // Also add any and all currently active ancient coins
+        features?.addAll(mainActivityCp.ancientCoins)
 
         rates = JSONObject(geoJsonString).get("rates") as? JSONObject
         Log.d(fragTag, "Rates: $rates")
@@ -197,7 +196,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
                 Log.e(fragTag, "[addMarkers] features is null")
             }
 
-            this.mapboxMap == null -> {
+            mapboxMap == null -> {
                 Log.e(fragTag, "[addMarkers] mapboxMap is null, can't add markers")
             }
 
@@ -206,11 +205,11 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
                 // Features are non-null and mapboxMap is too. Can safely loop over the features,
                 // adding the markers to the map as we go along.
 
-                val iconFactory: IconFactory = IconFactory.getInstance(mainActivity!!)
+                val iconFactory: IconFactory = IconFactory.getInstance(mainActivityCp)
                 val coinIconFactory = CoinIconFactory(iconFactory)
 
                 // First, get snapshot of user wallet as it is
-                mainActivity!!.firestoreWallet!!.get().run {
+                mainActivityCp.firestoreWallet?.get()?.run {
                     addOnSuccessListener { docSnapshot ->
                         Log.d(fragTag, "MapFragment wallet get succ")
                         // Getting the snapshot succeeded. Add the markers and geofences iff
@@ -258,7 +257,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
                                             valueDouble)
 
                                     val addedMarker: Marker? = if (icon != null) {
-                                        this@MapFragment.mapboxMap?.addMarker(
+                                        mapboxMap?.addMarker(
                                                 MarkerOptions()
                                                         .title("~${value
                                                                 .substringBefore('.')}" +
@@ -272,11 +271,10 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
                                     }
 
                                     if (addedMarker != null) {
-                                        // Add ID -> Marker and ID -> Feature to the maps so
-                                        // we can identify and pick up nearby coins later
-                                        coinIdToMarker[id] = addedMarker
-                                        coinIdToFeature[id] = feature
-                                        markerIdToCoinId[addedMarker.id] = id
+                                        // Add marker ID -> Coin so we can recognize which
+                                        // coin is being collected later
+                                        markerIdToCoin[addedMarker.id] = Coin(id, currency,
+                                                valueDouble)
                                     } else {
                                         Log.e(fragTag, "[addMarkers] Failed to add marker")
                                     }
@@ -287,12 +285,12 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
                 }
 
 
-                val bankIcon : Icon = iconFactory.fromResource(R.mipmap.bank_icon)
+                val bankIcon: Icon = iconFactory.fromResource(R.mipmap.bank_icon)
 
                 // Also want to add a special marker for the bank
-                val bank : Marker? = mapboxMap?.addMarker(
+                val bank: Marker? = mapboxMap?.addMarker(
                         MarkerOptions()
-                                .title("BANK")
+                                .title(BANK_MARKER_TITLE)
                                 .snippet("The bank!")
                                 .position(bankLocation)
                                 .icon(bankIcon)
@@ -336,7 +334,8 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
             if (localCachedMap == null) {
                 // Will need to download the map first before adding the markers.
                 Log.d(fragTag, "[onMapReady] Downloading coins location map")
-                val dateString = "http://homepages.inf.ed.ac.uk/stg/coinz/${mainActivity?.currentDate}/coinzmap.geojson"
+                val dateString = "http://homepages.inf.ed.ac.uk/stg/coinz/" +
+                        "${mainActivity?.currentDate}/coinzmap.geojson"
                 Log.d(fragTag, "Fragment downloading from $dateString" )
                 DownloadFileTask(this).execute(dateString)
             } else {
@@ -482,53 +481,56 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
     }
 
     /**
-     * Collects a desired coin, adding it to the users wallet and updating the map.
+     * Fetches the coin corresponding to the marker and collects it, adding it to the wallet.
      *
-     * @param coinId the coin-to-be-removed's id
+     * @param marker the marker which corresponds to the coin
      */
-    private fun collectCoin(coinId: String) {
+    private fun collectCoinFromMarker(marker: Marker) {
 
         // Copy the current combo for thread-safety
         var localComboTimer = comboTimer
         var localComboFactor = comboFactor
         var localComboTimeRemaining = comboTimeRemaining
 
-
+        // Get and update the current timer, or start a new one if there isn't one active
         if (localComboTimer == null) {
             // There is currently no timer active. Start one!
-            Log.d(fragTag, "[collectCoin] No combo active")
+            Log.d(fragTag, "[collectCoinFromMarker] No combo active")
             localComboTimeRemaining = 30000
             localComboTimer = getComboTimerInstance(localComboTimeRemaining)
         } else {
             if (localComboTimeRemaining == null) {
-                Log.e(fragTag, "[collectCoin] Combo timer is non-null but remaining time is")
+                Log.e(fragTag, "[collectCoinFromMarker] Combo timer is non-null but" +
+                        "remaining time is")
             } else {
-                Log.d(fragTag, "[collectCoin] Combo found with comboTimer $localComboTimer"
-                        + ", time remaining $localComboTimeRemaining and factor $localComboFactor")
-                // There's a combo active -- extend it by fifteen seconds!
+                Log.d(fragTag, "[collectCoinFromMarker] Combo found with comboTimer " +
+                        "$localComboTimer, time remaining $localComboTimeRemaining and factor " +
+                        "$localComboFactor")
+                // There's a combo active -- extend it!
                 localComboTimer.cancel()
                 localComboTimeRemaining += 20000
                 if (localComboTimeRemaining > 120000) {
+                    // Cap combo lengths to 120 secs
                     localComboTimeRemaining = 120000
                 }
                 localComboTimer = getComboTimerInstance(localComboTimeRemaining)
             }
         }
 
-        val marker: Marker? = coinIdToMarker[coinId]
-        val coinProperties: JsonObject? = coinIdToFeature[coinId]?.properties()
-        var value : Double? = coinProperties?.get("value")?.asDouble
-        val currency : String? = coinProperties?.get("currency")?.asString
+        // Attempt to fetch the coin
+        var value: Double? = markerIdToCoin[marker.id]?.value
+        val currency: String? = markerIdToCoin[marker.id]?.currency
+        val coinId: String? = markerIdToCoin[marker.id]?.id
 
         when {
             value == null -> {
-                Log.e(fragTag, "[collectCoin] Coin value is null")
+                Log.e(fragTag, "[collectCoinFromMarker] Coin value is null")
             }
             currency == null -> {
-                Log.e(fragTag, "[collectCoin] Coin currency is null")
+                Log.e(fragTag, "[collectCoinFromMarker] Coin currency is null")
             }
-            marker == null -> {
-                Log.e(fragTag, "[collectCoin] marker is null")
+            coinId == null -> {
+                Log.e(fragTag, "[collectCoinFromMarker] Coin id is null")
             }
             else -> {
                 // Everything looks good. Check if there's a combo active
@@ -547,7 +549,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
                 // will be able to try again.
                 // This means we can remove the marker before waiting for the async call to the
                 // database to finish, making for a smoother user experience.
-                removeMarker(coinId, marker)
+                removeMarker(marker)
 
                 // Start the combo timer we've set up
                 comboTimer = localComboTimer
@@ -605,8 +607,8 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
                     Log.d(fragTag, "[updateWallet] Setting up new doc")
                     mainActivity?.firestoreWallet?.set(coin)?.run {
                         addOnSuccessListener {
-                            Log.d(fragTag,"[updateWallet] Created wallet, added coin $coinId of" +
-                                    " currency $currency with value $value")
+                            Log.d(fragTag,"[updateWallet] Created wallet, added coin " +
+                                    "$coinId of currency $currency with value $value")
                             snackbarLayout.snackbar("Collected $roundedValue $currency")
                         }
                         addOnFailureListener { e ->
@@ -626,14 +628,10 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
      *
      * @param marker the marker to be removed
      */
-    private fun removeMarker(id: String, marker: Marker) {
+    private fun removeMarker(marker: Marker) {
+        Log.d(fragTag, "[removeMarkers] Removing marker ${marker.id}")
         mapboxMap?.removeMarker(marker)
-        Log.d(fragTag, "[removeMarkers] Removed marker of $id")
-
-        // Remove the coin id from the maps as it is no longer needed, and we do not want
-        // to check for its location again
-        coinIdToFeature.remove(id)
-        coinIdToMarker.remove(id)
+        markerIdToCoin.remove(marker.id)
 
     }
 
@@ -653,15 +651,15 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
             val distance = flatEarthDist(userLocation.latitude, markerPos.latitude,
                     userLocation.longitude, markerPos.longitude)
             when {
-                marker.title == "BANK" -> {
-                    //if (distance <= 25.0) {
+                marker.title == BANK_MARKER_TITLE -> {
+                    if (distance <= 25.0) {
                         val intent = Intent(mainActivity, BankActivity::class.java)
                         intent.putExtra(USER_EMAIL, mainActivity?.currentUserEmail)
                         intent.putExtra(EXCHANGE_RATES, rates.toString())
                         startActivity(intent)
-                    //} else {
-                        //toast("You're too far away from the bank")
-                    //}
+                    } else {
+                        mainActivity?.toast("You're too far away from the bank")
+                    }
 
                     // Either way consume the event as don't want to show a default
                     // pop-up box for the bank
@@ -671,18 +669,17 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
                 modeIsPickup -> {
                     // Pick up the coin
                     if (distance <= 25.0) {
-                        val coinId = markerIdToCoinId[marker.id]
-                        if (coinId == null) {
-                            Log.e(fragTag, "[OnMarkerClick] null coin id for ${marker.id}")
-                        } else {
-                            collectCoin(coinId)
-                        }
+                        collectCoinFromMarker(marker)
                     } else {
                         mainActivity?.toast("Too far away from coin")
                     }
                     return true
                 }
+
                 else -> {
+                    // Otherwise the user is interacting with a coin in inspection mode.
+                    // Simply return false to let Mapbox know that it should display
+                    // the default info box for the marker
                     return false
                 }
             }

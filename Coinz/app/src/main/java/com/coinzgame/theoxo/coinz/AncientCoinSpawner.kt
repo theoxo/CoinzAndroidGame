@@ -37,8 +37,8 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
      * @param result the GeoJSON String which was built from the downloaded data.
      */
     override fun downloadComplete(result: String) {
-        val sneakpeak = result.take(25)
-        Log.d(tag, "[downloadComplete] Result: $sneakpeak...")
+        val sneakpeek = result.take(25)
+        Log.d(tag, "[downloadComplete] Result: $sneakpeek...")
 
         // Copy the saved context and currentDate here for thread-safe behaviour
         val thisContext = context
@@ -92,136 +92,276 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
         this.context = context
 
         // Process the intent according to its action
-        if (intent?.action == Intent.ACTION_BOOT_COMPLETED || intent?.action == FIRST_RUN_ACTION) {
-            // Phone either just finished booting up or we are running the app for the first time.
-            // Set up the alarms to listen for the desired times.
-            if (context == null) {
+        when {
+            context == null -> {
                 Log.e(tag, "[onReceive] context is null")
-            } else {
-
-                val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
-
-                val desiredHours = listOf(7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18)
-                for (hour in desiredHours) {
-                    // Set up two alarms; one for the hour precisely and one for half an hour later.
-
-                    // Set ourselves to be the receiver of the intents for the alarms
-                    // and set the action so we can identify it when we receive it.
-                    val alarmIntent = Intent(context, AncientCoinSpawner::class.java)
-                    alarmIntent.action = ALARM_ACTION
-
-                    // Get the current system time so we can build pseudo-unique ids for the intents
-                    val currentSystemTime = System.currentTimeMillis()
-
-                    // Set up the calendar for the first intent
-                    val alarmCalendar : Calendar = Calendar.getInstance().apply {
-                        timeInMillis = currentSystemTime
-                        set(Calendar.HOUR_OF_DAY, hour)
-                        set(Calendar.MINUTE, 0)
-                    }
-
-                    if (alarmCalendar.timeInMillis < currentSystemTime) {
-                        // If the time has already passed today, set the alarm to start tomorrow
-                        // instead
-                        alarmCalendar.add(Calendar.DATE, 1)
-                    }
-
-                    var alarmPendingIntent =
-                            PendingIntent.getBroadcast(context,
-                                    currentSystemTime.toInt()+hour,
-                                    alarmIntent,
-                                    PendingIntent.FLAG_ONE_SHOT)
-
-
-
-                    // Set up the first alarm.
-                    alarmManager?.setRepeating(
-                            AlarmManager.RTC,
-                            alarmCalendar.timeInMillis,
-                            AlarmManager.INTERVAL_DAY,
-                            alarmPendingIntent
-                    )
-
-                    // Set up the calendar for the second alarm at 30 minutes past the hour
-                    val alarmCalendarHalf : Calendar = Calendar.getInstance().apply {
-                        timeInMillis = currentSystemTime
-                        set(Calendar.HOUR_OF_DAY, hour)
-                        set(Calendar.MINUTE, 30)
-                    }
-
-                    if (alarmCalendarHalf.timeInMillis < currentSystemTime) {
-                        // If the time has already passed today, set the alarm to start tomorrow
-                        // instead
-                        alarmCalendarHalf.add(Calendar.DATE, 1)
-                    }
-
-
-                    // Add one to the request code of the alarm pending intent to make sure it
-                    // is unique
-                    alarmPendingIntent =
-                            PendingIntent.getBroadcast(context,
-                                    currentSystemTime.toInt()+hour+1,
-                                    alarmIntent, PendingIntent.FLAG_CANCEL_CURRENT)
-
-                    // Set up the second alarm.
-                    alarmManager?.setRepeating(
-                            AlarmManager.RTC,
-                            alarmCalendarHalf.timeInMillis,
-                            AlarmManager.INTERVAL_DAY,
-                            alarmPendingIntent
-                    )
-                }
-
-                Log.d(tag, "[onReceive] Set up alarms")
             }
 
-        } else if (intent?.action == ALARM_ACTION) {
-            // Have received one of our alarms. Attempt to spawn ancient coins
-            Log.d(tag, "[onReceive] Received alarm")
-            if (context != null) {
-
-                // Get current date
-                val year : String = Calendar.getInstance().get(Calendar.YEAR).toString()
-                // Add one to the month as it is 0-indexed
-                var month : String = (Calendar.getInstance().get(Calendar.MONTH) + 1).toString()
-                var day : String = Calendar.getInstance().get(Calendar.DAY_OF_MONTH).toString()
-                if (year != "2018" && year != "2019") {
-                    Log.e(tag, "Unsupported date")
-                }
-                if (month.length < 2) {
-                    // Pad to 0M format
-                    month = "0$month"
-                }
-                if (day.length < 2) {
-                    // Pad to 0D format
-                    day = "0$day"
-                }
-                currentDate = "$year/$month/$day"
-
-                // Get the data stored on the system to see if the user has already downloaded
-                // today's map
-                val storedPrefs = context.getSharedPreferences(PREFERENCES_FILE,
-                        Context.MODE_PRIVATE)
-                val cachedMap = storedPrefs.getString(SAVED_MAP_JSON, null)
-                val lastDownloadDate = storedPrefs.getString(LAST_DOWNLOAD_DATE, "")
-
-                if (lastDownloadDate != currentDate || cachedMap == null) {
-                    // The user has not yet downloaded the map for today.
-                    // Do this in the background so we can spawn today's ancient coins.
-                    Log.e(tag, "[onReceive] cachedMap is invalid. Downloading a new one")
-                    // Begin the background download
-                    val dateString = "http://homepages.inf.ed.ac.uk/stg/coinz/$currentDate/coinzmap.geojson"
-                    DownloadFileTask(this).execute(dateString)
-                } else {
-                    // The user has already downloaded today's map, go ahead and try to spawn the
-                    // ancient coins for this alarm.
-                    spawnAncientCoins(cachedMap)
-                }
+            (intent?.action == Intent.ACTION_BOOT_COMPLETED
+                    || intent?.action == FIRST_RUN_ACTION) -> {
+                // Phone either just finished booting up or we are running the app for the first
+                // time.
+                // Set up the alarms to listen for the desired times.
+                setUpAlarms(context)
             }
-        }  else {
-            // These are the only types of intents we expect.
-            Log.w(tag, "[onReceive] Could not recognize intent action ${intent?.action}")
+
+            intent?.action == ALARM_ACTION -> {
+                // Have received one of our alarms. Attempt to spawn ancient coins
+                handleAlarmEvent(context)
+            }
+
+            intent?.action == OVERWRITE_ALARM_ACTION -> {
+                // The hour has struck 19.00 and we therefore want to make sure
+                // that no ancient coins are saved on the device
+                saveAncientCoins(null, null, null, null)
+
+            }
+            else -> {
+                // These are the only types of intents we expect.
+                Log.w(tag, "[onReceive] Could not recognize intent action ${intent?.action}")
+            }
+
         }
+    }
+
+    private fun handleAlarmEvent(context: Context) {
+        // Get current date
+        val year : String = Calendar.getInstance().get(Calendar.YEAR).toString()
+        // Add one to the month as it is 0-indexed
+        var month : String = (Calendar.getInstance().get(Calendar.MONTH) + 1).toString()
+        var day : String = Calendar.getInstance().get(Calendar.DAY_OF_MONTH).toString()
+        if (year != "2018" && year != "2019") {
+            Log.e(tag, "Unsupported date")
+        }
+        if (month.length < 2) {
+            // Pad to 0M format
+            month = "0$month"
+        }
+        if (day.length < 2) {
+            // Pad to 0D format
+            day = "0$day"
+        }
+        currentDate = "$year/$month/$day"
+
+        // Get the data stored on the system to see if the user has already downloaded
+        // today's map
+        val storedPrefs = context.getSharedPreferences(PREFERENCES_FILE,
+                Context.MODE_PRIVATE)
+        val cachedMap = storedPrefs.getString(SAVED_MAP_JSON, null)
+        val lastDownloadDate = storedPrefs.getString(LAST_DOWNLOAD_DATE, "")
+
+        if (lastDownloadDate != currentDate || cachedMap == null) {
+            // The user has not yet downloaded the map for today.
+            // Do this in the background so we can spawn today's ancient coins.
+            Log.e(tag, "[onReceive] cachedMap is invalid. Downloading a new one")
+            // Begin the background download
+            val dateString = "http://homepages.inf.ed.ac.uk/stg/coinz/$currentDate/coinzmap.geojson"
+            DownloadFileTask(this).execute(dateString)
+        } else {
+            // The user has already downloaded today's map, go ahead and try to spawn the
+            // ancient coins for this alarm.
+            spawnAncientCoins(cachedMap)
+        }
+    }
+
+    private fun saveAncientCoins(shil: JSONObject?, quid: JSONObject?, dolr: JSONObject?,
+                                 peny: JSONObject?) {
+        val preferenceContext = context
+        if (preferenceContext == null) {
+            // If the context is null we won't be able to store the ancient coins we've spawned.
+            // Throw an error log and return early
+            Log.e(tag, "[saveAncientCoins] the context is null so cannot obtain stored "
+                    + "preferences. Returning")
+            return
+        }
+
+        // Set up the references to the shared preferences file
+        val storedPrefs = preferenceContext.getSharedPreferences(PREFERENCES_FILE,
+                Context.MODE_PRIVATE)
+        val editor: SharedPreferences.Editor = storedPrefs.edit()
+
+        if (shil != null) {
+            Log.d(tag, "Saving an ancient shil coin")
+            editor.putString(ANCIENT_SHIL, shil.toString())
+        } else {
+            Log.d(tag, "Setting saved ancient shil coin to empty string")
+            editor.putString(ANCIENT_SHIL, "")
+        }
+
+        if (quid != null) {
+            editor.putString(ANCIENT_QUID, quid.toString())
+            Log.d(tag, "Saving an ancient quid coin")
+        } else {
+            Log.d(tag, "Setting saved ancient quid coin to empty string")
+            editor.putString(ANCIENT_QUID, "")
+        }
+
+        if (dolr != null) {
+            editor.putString(ANCIENT_DOLR, dolr.toString())
+            Log.d(tag, "Saving an ancient dolr coin")
+        } else {
+            Log.d(tag, "Setting saved ancient dolr coin to empty string")
+            editor.putString(ANCIENT_DOLR, "")
+        }
+
+        if (peny != null) {
+            editor.putString(ANCIENT_PENY, peny.toString())
+            Log.d(tag, "Saving an ancient peny coin")
+        } else {
+            Log.d(tag, "Setting saved ancient peny coin to empty string")
+            editor.putString(ANCIENT_PENY, "")
+        }
+
+        // Save the changes to the preferences file.
+        editor.apply()
+    }
+
+    private fun setUpAlarms(context: Context) {
+
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+
+        /*
+        val alarmIntent1 = Intent(context, AncientCoinSpawner::class.java)
+        alarmIntent1.action = ALARM_ACTION
+
+        // Get the current system time to build the alarms based off
+        val currentSystemTime1 = System.currentTimeMillis()
+
+        // Set up the calendar for the first intent
+        val alarmCalendar1 : Calendar = Calendar.getInstance().apply {
+            timeInMillis = currentSystemTime1
+            set(Calendar.HOUR_OF_DAY, 11)
+            set(Calendar.MINUTE, 15)
+        }
+
+        val alarmPendingIntent1 =
+                PendingIntent.getBroadcast(context,
+                        currentSystemTime1.toInt(),
+                        alarmIntent1,
+                        PendingIntent.FLAG_UPDATE_CURRENT)
+
+
+
+        // Set up the first alarm.
+        alarmManager?.setRepeating(
+                AlarmManager.RTC,
+                alarmCalendar1.timeInMillis,
+                AlarmManager.INTERVAL_DAY,
+                alarmPendingIntent1
+        )*/
+        val desiredHours = listOf(7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18)
+        for (hour in desiredHours) {
+            // Set up two alarms; one for the hour precisely and one for half an hour later.
+
+            // Set ourselves to be the receiver of the intents for the alarms
+            // and set the action so we can identify it when we receive it.
+            val alarmIntent = Intent(context, AncientCoinSpawner::class.java)
+            alarmIntent.action = ALARM_ACTION
+
+            // Get the current system time to build the alarms based off
+            val currentSystemTime = System.currentTimeMillis()
+
+            // Set up the calendar for the first intent
+            val alarmCalendar : Calendar = Calendar.getInstance().apply {
+                timeInMillis = currentSystemTime
+                set(Calendar.HOUR_OF_DAY, hour)
+                set(Calendar.MINUTE, 0)
+            }
+
+            if (alarmCalendar.timeInMillis < currentSystemTime) {
+                // If the time has already passed today, set the alarm to start tomorrow
+                // instead
+                alarmCalendar.add(Calendar.DATE, 1)
+            }
+
+            val alarmPendingIntent =
+                    PendingIntent.getBroadcast(context,
+                            currentSystemTime.toInt()+hour,
+                            alarmIntent,
+                            PendingIntent.FLAG_UPDATE_CURRENT)
+
+
+
+            // Set up the first alarm.
+            alarmManager?.setRepeating(
+                    AlarmManager.RTC,
+                    alarmCalendar.timeInMillis,
+                    AlarmManager.INTERVAL_DAY,
+                    alarmPendingIntent
+            )
+
+            // Set up the calendar for the second alarm at 30 minutes past the hour
+            val alarmCalendarHalf : Calendar = Calendar.getInstance().apply {
+                timeInMillis = currentSystemTime
+                set(Calendar.HOUR_OF_DAY, hour)
+                set(Calendar.MINUTE, 30)
+            }
+
+            if (alarmCalendarHalf.timeInMillis < currentSystemTime) {
+                // If the time has already passed today, set the alarm to start tomorrow
+                // instead
+                alarmCalendarHalf.add(Calendar.DATE, 1)
+            }
+
+            val alarmIntentHalf = Intent(context, AncientCoinSpawner::class.java)
+            alarmIntentHalf.action = ALARM_ACTION
+
+            // Add one to the request code of the alarm pending intent to make sure it
+            // is unique
+            val alarmPendingIntentHalf =
+                    PendingIntent.getBroadcast(context,
+                            currentSystemTime.toInt()+hour+1,
+                            alarmIntentHalf, PendingIntent.FLAG_UPDATE_CURRENT)
+
+            // Set up the second alarm.
+            alarmManager?.setRepeating(
+                    AlarmManager.RTC,
+                    alarmCalendarHalf.timeInMillis,
+                    AlarmManager.INTERVAL_DAY,
+                    alarmPendingIntentHalf
+            )
+        }
+
+        // Also set up an alarm for 19.00 that overwrites any coins spawned at 18.30 with
+        // the empty string so they don't stay on the map all night
+        // Set ourselves to be the receiver of the intents for the alarms
+        // and set the action so we can identify it when we receive it.
+        val overWriteIntent = Intent(context, AncientCoinSpawner::class.java)
+        overWriteIntent.action = OVERWRITE_ALARM_ACTION
+
+        val currentSystemTime = System.currentTimeMillis()
+
+        // Set up the calendar for the overwrite event
+        val overWriteCalendar: Calendar = Calendar.getInstance().apply {
+            timeInMillis = currentSystemTime
+            set(Calendar.HOUR_OF_DAY, 19)
+            set(Calendar.MINUTE, 0)
+        }
+
+        if (overWriteCalendar.timeInMillis < currentSystemTime) {
+            // If the time has already passed today, set the alarm to start tomorrow
+            // instead
+            overWriteCalendar.add(Calendar.DATE, 1)
+        }
+
+        val overWritePendingIntent =
+                PendingIntent.getBroadcast(context,
+                        currentSystemTime.toInt(),
+                        overWriteIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT)
+
+
+
+        // Set up the overwrite alarm
+        alarmManager?.setRepeating(
+                AlarmManager.RTC,
+                overWriteCalendar.timeInMillis,
+                AlarmManager.INTERVAL_DAY,
+                overWritePendingIntent
+        )
+
+        Log.d(tag, "[setUpAlarms] Alarm setup complete")
+
     }
 
     /**
@@ -232,74 +372,40 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
      */
     private fun spawnAncientCoins(geoJsonString: String) {
 
-        val preferenceContext = context
-        if (preferenceContext == null) {
-            // If the context is null we won't be able to store the ancient coins we've spawned.
-            // Throw an error log and return early
-            Log.e(tag, "[spawnAncientCoins] the context is null so cannot obtain stored "
-                    + "preferences. Returning")
-            return
-        }
-
-        // Set up the references to the shared preferences file
-        val storedPrefs = preferenceContext.getSharedPreferences(PREFERENCES_FILE,
-                Context.MODE_PRIVATE)
-        val editor: SharedPreferences.Editor = storedPrefs.edit()
-
         // Keep track of which coins spawned so we can build the notification
         val ancientCoinsSpawned = ArrayList<JSONObject>()
 
         // Get the top coin values in the order SHIL, QUID, DOLR, PENY
         val topCoinValues = getTopCoinValues(geoJsonString)
 
-        // Attempt to spawn an ancient SHIL, storing the result on the device if successful,
-        // and otherwise storing the empty string
+        // Attempt to spawn an ancient SHIL
         val shilAncientCoin = generateAncientCoin(topCoinValues[0], "SHIL")
         if (shilAncientCoin != null) {
-            Log.d(tag, "Saving an ancient shil coin")
             ancientCoinsSpawned.add(shilAncientCoin)
-            editor.putString(ANCIENT_SHIL, shilAncientCoin.toString())
-        } else {
-            Log.d(tag, "Setting saved ancient shil coin to empty string")
-            editor.putString(ANCIENT_SHIL, "")
         }
 
         // Now do the same for QUID
         val quidAncientCoin = generateAncientCoin(topCoinValues[1], "QUID")
         if (quidAncientCoin != null) {
             ancientCoinsSpawned.add(quidAncientCoin)
-            editor.putString(ANCIENT_QUID, quidAncientCoin.toString())
-            Log.d(tag, "Saving an ancient quid coin")
-        } else {
-            Log.d(tag, "Setting saved ancient quid coin to empty string")
-            editor.putString(ANCIENT_QUID, "")
         }
 
         // Next up is the DOLR currency
         val dolrAncientCoin = generateAncientCoin(topCoinValues[2], "DOLR")
         if (dolrAncientCoin != null) {
             ancientCoinsSpawned.add(dolrAncientCoin)
-            editor.putString(ANCIENT_DOLR, dolrAncientCoin.toString())
-            Log.d(tag, "Saving an ancient dolr coin")
-        } else {
-            Log.d(tag, "Setting saved ancient dolr coin to empty string")
-            editor.putString(ANCIENT_DOLR, "")
         }
 
         // Finally, attempt to spawn an ancient PENY.
         val penyAncientCoin = generateAncientCoin(topCoinValues[3], "PENY")
         if (penyAncientCoin != null) {
             ancientCoinsSpawned.add(penyAncientCoin)
-            editor.putString(ANCIENT_PENY, penyAncientCoin.toString())
-            Log.d(tag, "Saving an ancient peny coin")
-        } else {
-            Log.d(tag, "Setting saved ancient peny coin to empty string")
-            editor.putString(ANCIENT_PENY, "")
         }
 
-        // Save the changes to the preferences file.
-        editor.apply()
+        // Save any successes on the device
+        saveAncientCoins(shilAncientCoin, quidAncientCoin, dolrAncientCoin, penyAncientCoin)
 
+        // Build a notification if doing so is appropriate
         if (ancientCoinsSpawned.isNotEmpty()) {
             // We have successfully generated at least 1 ancient coin; let the user know!
             generateNotificationForAncientCoinsSpawned(ancientCoinsSpawned)
@@ -377,8 +483,8 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
             // Make its value 5 * the given top value of its currency:
             val value = (topCoinValue * 5).toString()
             // Randomly generate its location on the UoE campus
-            val lat = ThreadLocalRandom.current().nextDouble(55.942617, 55.946233)
-            val long = ThreadLocalRandom.current().nextDouble(-3.192473, -3.18419)
+            val lat = ThreadLocalRandom.current().nextDouble(UOE_MIN_LATITUDE, UOE_MAX_LATITUDE)
+            val long = ThreadLocalRandom.current().nextDouble(UOE_MIN_LONGITUDE, UOE_MAX_LONGITUDE)
 
             // Generate a pseudo-unique id for the ancient coin
             val id = "ANCIENT$currency${System.currentTimeMillis().toInt()}"
@@ -451,6 +557,7 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
     private fun displayNotificationWithTitleAndText(title : String,
                                                     text : String) {
 
+        Log.d(tag, "[displayNotificationWithTitleAndText] Invoked")
         val notificationContext = context
 
         if (notificationContext == null) {
