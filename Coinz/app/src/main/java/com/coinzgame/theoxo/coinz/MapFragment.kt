@@ -34,6 +34,7 @@ import org.jetbrains.anko.design.snackbar
 import org.jetbrains.anko.toast
 import org.json.JSONException
 import org.json.JSONObject
+import java.util.*
 import kotlin.collections.HashMap
 
 /**
@@ -47,20 +48,20 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
     private val fragTag = "MapFragment"
 
     // Local variables related to the location tracking and displaying
-    private var originLocation : Location? = null
-    private lateinit var locationEngine : LocationEngine
+    private var originLocation: Location? = null
+    private lateinit var locationEngine: LocationEngine
     private lateinit var locationLayerPlugin: LocationLayerPlugin
 
     // Map variables
-    private var mapView : MapView? = null
-    private var mapboxMap : MapboxMap? = null
-    private val bankLocation : LatLng = LatLng(BANK_MARKER_LATITUDE, BANK_MARKER_LONGITUDE)
+    private var mapView: MapView? = null
+    private var mapboxMap: MapboxMap? = null
+    private val bankLocation: LatLng = LatLng(BANK_MARKER_LATITUDE, BANK_MARKER_LONGITUDE)
 
     // Keep track of data related to the coins
-    private lateinit var markerIdToCoin : MutableMap<Long, Coin>
+    private lateinit var markerIdToCoin: MutableMap<Long, Coin>
 
     // Today's rates
-    private var rates : JSONObject? = null
+    private var rates: JSONObject? = null
 
     // Combo bonus feature objects
     private var comboTimer: CountDownTimer? = null
@@ -130,6 +131,8 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
 
     override fun onStop() {
         super.onStop()
+        // Cancel the combo timer which was active
+        comboTimer?.cancel()
         mapView?.onStop()
     }
 
@@ -421,57 +424,6 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
     }
 
     /**
-     * Approximates the distance between to latitude/longitude positions cheaply.
-     * Sourced from
-     * https://stackoverflow.com/questions/3694380/calculating-distance-between-two-points-using-latitude-longitude-what-am-i-doi
-     * along with [distPerLat] and [distPerLong].
-     *
-     * @param fromLat The latitude of the first point.
-     * @param fromLong The longitude of the first point.
-     * @param toLat The latitude of the second point.
-     * @param toLong The longitude of the second point.
-     * @return The approximate distance between the points in meters.
-     */
-    private fun flatEarthDist(
-            fromLat : Double, toLat : Double, fromLong : Double, toLong : Double) : Double {
-        val a = (fromLat-toLat) * distPerLat(fromLat)
-        val b = (fromLong-toLong) * distPerLong(fromLat)
-        return Math.sqrt(a*a + b*b)
-    }
-
-    /**
-     * Calculates the approximate distance of "one latitude" at the given latitude.
-     * Sourced from
-     * https://stackoverflow.com/questions/3694380/calculating-distance-between-two-points-using-latitude-longitude-what-am-i-doi
-     * along with [distPerLong] and [flatEarthDist].
-     *
-     * @param lat The current latitude.
-     * @return The approximate length of one latitude at latitude [lat], in metres.
-     */
-    private fun distPerLat(lat : Double) : Double {
-        return (-0.000000487305676*Math.pow(lat, 4.0)
-                -0.0033668574*Math.pow(lat, 3.0)
-                +0.4601181791*lat*lat
-                -1.4558127346*lat+110579.25662316)
-    }
-
-    /**
-     * Calculates the approximate distance of "one longitude" at the given latitude.
-     * Sourced from
-     * https://stackoverflow.com/questions/3694380/calculating-distance-between-two-points-using-latitude-longitude-what-am-i-doi
-     * along with [distPerLat] and [flatEarthDist].
-     *
-     * @param lat The current latitude.
-     * @return The approximate length of one longitude at latitude [lat], in metres.
-     */
-    private fun distPerLong(lat : Double) : Double {
-        return (0.0003121092*Math.pow(lat, 4.0)
-                +0.0101182384*Math.pow(lat, 3.0)
-                -17.2385140059*lat*lat
-                +5.5485277537*lat+111301.967182595)
-    }
-
-    /**
      * Requests location updates from the [locationEngine] upon the activity being connected.
      */
     @SuppressWarnings("MissingPermission")
@@ -643,16 +595,21 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
      */
     private fun onMarkerClick(marker: Marker) : Boolean {
         val userLocation = originLocation // copy for thread safety
-        val markerPos = marker.position
+        val markerLatLng = marker.position
         if (userLocation == null) {
             mainActivity?.toast("Could not find your location")
+            // Do not consume the click event so the default info box is shown for the marker
             return false
         } else {
-            val distance = flatEarthDist(userLocation.latitude, markerPos.latitude,
-                    userLocation.longitude, markerPos.longitude)
+            // Get the distance from the user to the marker being clicked
+            val userLatLng = LatLng(userLocation.latitude, userLocation.longitude)
+            val distance = userLatLng.distanceTo(markerLatLng)
+
             when {
                 marker.title == BANK_MARKER_TITLE -> {
                     if (distance <= 25.0) {
+                        // The user is close enough to interact with the bank.
+                        // Start the BankActivity, passing the needed information
                         val intent = Intent(mainActivity, BankActivity::class.java)
                         intent.putExtra(USER_EMAIL, mainActivity?.currentUserEmail)
                         intent.putExtra(EXCHANGE_RATES, rates.toString())
@@ -667,8 +624,9 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
                 }
 
                 modeIsPickup -> {
-                    // Pick up the coin
                     if (distance <= 25.0) {
+                        // The user is close enough to pick up the coin.
+                        // Go ahead and collect it
                         collectCoinFromMarker(marker)
                     } else {
                         mainActivity?.toast("Too far away from coin")
@@ -688,6 +646,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
 
     /**
      * Gets a singleton [CountDownTimer] instance with the desired duration and behaviour.
+     * Also updates the fields which keep track of the combo currently active appropriately.
      *
      * @param millisInFuture the millisecond to count down to
      * @return the set up combo timer
@@ -698,12 +657,8 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
 
         return object : CountDownTimer(millisInFuture, 1000) {
             override fun onTick(millisRemaining: Long) {
-                try {
-                   val timerText: Int = (millisRemaining / 1000).toInt()
-                   comboTimerText.text = "$timerText"
-                } catch (e: NumberFormatException) {
-                    Log.e(fragTag, "[getComboTimerInstance][onTick] Exception: $e")
-                }
+                val timerText: String = String.format("%.0f", millisRemaining / 1000.0)
+                comboTimerText.text = timerText
                 comboTimeRemaining = millisRemaining
             }
 
