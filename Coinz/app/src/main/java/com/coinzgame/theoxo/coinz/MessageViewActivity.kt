@@ -3,7 +3,7 @@ package com.coinzgame.theoxo.coinz
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
-import kotlinx.android.synthetic.main.activity_mail_view.*
+import kotlinx.android.synthetic.main.activity_message_view.*
 import org.json.JSONObject
 
 /**
@@ -20,22 +20,26 @@ class MessageViewActivity : AppCompatActivity() {
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_mail_view)
+        setContentView(R.layout.activity_message_view)
 
         // Get the retrieved message
         val messageJSONStr = intent?.getStringExtra(MESSAGE_JSON_STRING)
         val message = Message(JSONObject(messageJSONStr))
 
-        // Update the textviews
-        title = "${message.senderEmail},\n${message.timestamp}"
-
-        messageTextView.text = message.messageText
+        // Update the title and  textview accordingly
+        title = "${message.senderEmail}"
+        messageTimestampTextView.text = "${message.timestamp}"
+        messageTextView.text = "${message.messageText}"
 
         val attachedCoins = message.attachedCoins
         if (attachedCoins == null || attachedCoins.size == 0) {
             Log.d(tag, "[onCreate] No attached coins found")
+            // Since there are no coins attached, we don't need to set an adapter to
+            // list view which would be showing them.
         } else {
-            val attachedCoinsAdapter = CoinAdapter(this, attachedCoins, false)
+            // There is at least one coin attached, so get an adapter for the listview and set it
+            val attachedCoinsAdapter = CoinAdapter(this, attachedCoins,
+                    false)
             messageAttachedCoinsListView.adapter = attachedCoinsAdapter
         }
     }

@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Layout file for the InboxFragment. -->
 <android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:theme="@style/AppTheme.NoActionBar"
-    tools:context=".InboxActivity">
+    tools:context=".InboxFragment">
 
+    <!-- Define a button which the user can press to start a MessageCreationActivity, crafting
+         a new message to another user. -->
     <Button
         android:id="@+id/newMessageButton"
         style="@style/Widget.AppCompat.Button.Colored"
@@ -18,27 +21,28 @@
         android:layout_marginBottom="8dp"
         android:paddingStart="10dp"
         android:paddingEnd="10dp"
-        android:text="SEND NEW MESSAGE"
+        android:text="@string/start_message_creation_button_text"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.0" />
 
-    <EditText
-        android:id="@+id/inboxText"
+    <!-- Let's the user know that their inbox is listed below. -->
+    <TextView
+        android:id="@+id/inboxTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
+        android:layout_marginStart="16dp"
         android:layout_marginTop="8dp"
-        android:layout_marginEnd="8dp"
+        android:layout_marginEnd="16dp"
         android:layout_marginBottom="8dp"
         android:ems="10"
-        android:inputType="none"
         android:focusable="false"
         android:focusableInTouchMode="false"
+        android:inputType="none"
         android:longClickable="false"
-        android:text="Inbox"
+        android:text="@string/inbox_text"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
@@ -46,37 +50,32 @@
         app:layout_constraintTop_toBottomOf="@+id/newMessageButton"
         app:layout_constraintVertical_bias="0.0" />
 
+    <!-- The list to dynamically load the messages in the user's inbox into. -->
     <ListView
         android:id="@+id/inboxListView"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
         android:layout_marginEnd="8dp"
         android:layout_marginBottom="8dp"
-        app:layout_constraintBottom_toTopOf="@+id/bottom_nav_bar"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/inboxText"
-        app:layout_constraintVertical_bias="0.48000002" />
-
-    <android.support.design.widget.BottomNavigationView
-        android:id="@+id/bottom_nav_bar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:visibility="visible"
-        android:background="@color/colorPrimary"
-        app:itemIconTint="@drawable/bottomnavigationviewselector"
-        app:itemTextColor="@drawable/bottomnavigationviewselector"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="1.0"
-        app:menu="@menu/navigation_menu">
+        app:layout_constraintTop_toBottomOf="@+id/inboxTextView" />
 
-    </android.support.design.widget.BottomNavigationView>
+    <!-- This progress bar will be shown when we are waiting to get the inbox from Firebase. -->
+    <ProgressBar
+        android:id="@+id/inboxProgressBar"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="40dp"
+        android:layout_marginEnd="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/inboxTextView"
+        tools:visibility="gone" />
+
 
 </android.support.constraint.ConstraintLayout>

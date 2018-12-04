@@ -11,11 +11,9 @@ import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 import kotlinx.android.synthetic.main.activity_message_creation.*
-import org.jetbrains.anko.email
 import org.jetbrains.anko.toast
 import org.json.JSONException
 import org.json.JSONObject
-import java.time.LocalDateTime
 import java.util.*
 
 
@@ -47,6 +45,15 @@ class MessageCreationActivity : AppCompatActivity() {
 
         sendButton.setOnClickListener { _ -> generateMessage() }
 
+        // Set up a regex that matches ".", "..", and any "__.*__"
+        // where only in the last on is period a special character
+        // Do this by escaping all the literals involed for safety.
+        // This will be needed to ensure the target email is a valid collection reference key
+        val escapedPeriod = Regex.escape(".")
+        val escapedUnderscore = Regex.escape("_")
+        val invalidCollectionRegex = Regex("$escapedPeriod|$escapedPeriod$escapedPeriod"
+            + "|$escapedUnderscore$escapedUnderscore.*$escapedUnderscore$escapedUnderscore")
+
         targetEmail.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
                 // Not interested
@@ -57,10 +64,19 @@ class MessageCreationActivity : AppCompatActivity() {
             }
 
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                sendButton.isEnabled = !(targetEmail.text.isEmpty()
-                                         || targetEmail.text.toString() == currentUserEmail
-                                         || '~' in targetEmail.text
-                                         || '/' in targetEmail.text)
+                // Enable the send message button only if it is safe to do so.
+                // This means we do not want the target email to be empty, we do not want
+                // it to be ourselves, and as this will be used to reference a colleciton
+                // we must adhere to firestore's assumptions as defined here:
+                // https://firebase.google.com/docs/firestore/quotas
+                // Meaning it must not contain "/", be only "." or "..",
+                // not match the regex "__.*__",
+                // and not be more than 1500 bytes long.
+                val targetEmailString = targetEmail.text.toString()
+                sendButton.isEnabled = ((!targetEmailString.isEmpty())
+                        && targetEmailString.all { c -> c != '/' }
+                        && (!invalidCollectionRegex.matches(targetEmailString))
+                        && targetEmailString.toByteArray().size <= 1500)
             }
         })
 
@@ -114,15 +130,17 @@ class MessageCreationActivity : AppCompatActivity() {
             val sentCoinsDeletionMap = HashMap<String, String>()
 
             val ticks = coinsListView.checkedItemPositions
-            val listViewLength = ticks.size()
+            // If the ticks is null, likely because the user is not allowed to
+            // send any coins, set the loop target to 0 to skip the coins
+            val listViewLength = ticks?.size() ?: 0
             for (i in 0 until listViewLength) {
                 if (ticks[i]) {
                     // If the coin is ticked,
                     // add it to the email body
-                    val coin : Coin? = coinsListView.getItemAtPosition(i) as? Coin
-                    val currency : String? = coin?.currency
-                    val value : Double? = coin?.value
-                    val id : String? = coin?.id
+                    val coin: Coin? = coinsListView.getItemAtPosition(i) as? Coin
+                    val currency: String? = coin?.currency
+                    val value: Double? = coin?.value
+                    val id: String? = coin?.id
                     when {
                         coin == null -> {
                             Log.e(tag, "[generateMessage] Could not cast item at pos $i to coin")
@@ -142,7 +160,7 @@ class MessageCreationActivity : AppCompatActivity() {
                             coinJSON.put(CURRENCY, currency)
                             coinJSON.put(VALUE, value)
                             addedCoins.add(coinJSON)
-                            sentCoinsDeletionMap["$currency|$id"] = COIN_DEPOSITED
+                            sentCoinsDeletionMap["`$currency|$id`"] = COIN_DEPOSITED
                         }
                     }
                 }
@@ -151,10 +169,10 @@ class MessageCreationActivity : AppCompatActivity() {
             messageJSON.put(MESSAGE_ATTACHMENTS, addedCoins)
             messageJSON.put(MESSAGE_TEXT, message.text.toString())
             messageJSON.put(SENDER, currentUserEmail)
-            messageJSON.put(TIMESTAMP, "${currentTime.get(Calendar.DAY_OF_MONTH)}-" +
-                    "${currentTime.get(Calendar.MONTH) + 1}-${currentTime.get(Calendar.YEAR)}" +
-                    " ${currentTime.get(Calendar.HOUR_OF_DAY)}:${currentTime.get(Calendar.MINUTE)}" +
-                    ":${currentTime.get(Calendar.SECOND)}")
+            messageJSON.put(TIMESTAMP, "${currentTime.get(Calendar.DAY_OF_MONTH)}-"
+                    + "${currentTime.get(Calendar.MONTH) + 1}-${currentTime.get(Calendar.YEAR)}"
+                    + " ${currentTime.get(Calendar.HOUR_OF_DAY)}:${currentTime.get(Calendar.MINUTE)}"
+                    + ":${currentTime.get(Calendar.SECOND)}")
 
             val  generatedMessage = Message(messageJSON)
 

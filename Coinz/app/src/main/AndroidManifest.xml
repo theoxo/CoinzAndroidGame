@@ -29,15 +29,9 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".AccountActivity"
-            android:theme="@style/AppTheme.NoActionBar" />
-        <activity
             android:name=".BankActivity"
             android:label="Bank"
             android:theme="@style/AppTheme.Dialog" />
-        <activity
-            android:name=".InboxActivity"
-            android:theme="@style/AppTheme.NoActionBar" />
         <activity
             android:name=".MessageCreationActivity"
             android:label="New message"

@@ -9,7 +9,7 @@ import org.json.JSONObject
  * @param currency the currency of the coin.
  * @param value the coin's specified value.
  */
-class Coin (val id : String, val currency : String, val value : Double) {
+class Coin (val id: String, val currency: String, val value: Double) {
 
     /**
      * Turns the coin into a [JSONObject].

@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Defines the layout for the BankActivity. -->
 <android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -11,10 +12,12 @@
     android:animateLayoutChanges="true"
     tools:context=".BankActivity">
 
+    <!-- Shows the bank logo at the top of the activity -->
     <ImageView
         android:id="@+id/imageView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:contentDescription="@string/bank_logo_description"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -22,6 +25,7 @@
         app:layout_constraintVertical_bias="0.0"
         app:srcCompat="@mipmap/bank_icon" />
 
+    <!-- TextView which lets the user know about their current bank status. -->
     <TextView
         android:id="@+id/upperTextView"
         android:layout_width="wrap_content"
@@ -34,6 +38,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/bankProgressBar" />
 
+    <!-- The list to dynamically display the available coins in. -->
     <ListView
         android:id="@+id/coinsListView"
         android:layout_width="0dp"
@@ -47,6 +52,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/lowerTextView" />
 
+    <!-- The button that enables the user to deposit the selected coins. -->
     <Button
         android:id="@+id/depositButton"
         style="@style/Widget.AppCompat.Button.Colored"
@@ -55,12 +61,14 @@
         android:layout_marginStart="8dp"
         android:layout_marginTop="8dp"
         android:layout_marginEnd="8dp"
-        android:text="Deposit"
+        android:text="@string/deposit_button_text"
         android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/imageView" />
 
+    <!-- TextView which first prompts the user for the source of the coins
+         and then displays the exchange rates once the source has been chosen. -->
     <TextView
         android:id="@+id/lowerTextView"
         android:layout_width="wrap_content"
@@ -69,13 +77,14 @@
         android:layout_marginTop="16dp"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="8dp"
-        android:text="Where do you want to deposit coins from?"
+        android:text="@string/coin_location_prompt"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/upperTextView"
         app:layout_constraintVertical_bias="0.0" />
 
+    <!-- Layout to contain the buttons selecting the source of the coins. -->
     <LinearLayout
         android:id="@+id/linearLayout2"
         android:layout_width="match_parent"
@@ -89,6 +98,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/lowerTextView">
 
+        <!-- Button to choose the inbox as the source of the coins. -->
         <Button
             android:id="@+id/chooseInboxButton"
             style="@style/Widget.AppCompat.Button.Colored"
@@ -97,12 +107,13 @@
             android:layout_marginStart="8dp"
             android:layout_marginTop="8dp"
             android:layout_marginEnd="8dp"
-            android:text="My Inbox"
+            android:text="@string/inbox_choice_button_text"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.66"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/lowerTextView" />
 
+        <!-- Button to choose the wallet as the source of the coins. -->
         <Button
             android:id="@+id/chooseWalletButton"
             style="@style/Widget.AppCompat.Button.Colored"
@@ -110,11 +121,13 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:layout_marginEnd="8dp"
-            android:text="My Wallet"
+            android:text="@string/wallet_choice_button_text"
             app:layout_constraintEnd_toStartOf="@+id/chooseInboxButton"
             app:layout_constraintTop_toBottomOf="@+id/lowerTextView" />
     </LinearLayout>
 
+    <!-- This progress bar will be displayed whenever we are waiting for a Firebase query to
+         finish so that the UI stays responsive and clear. -->
     <ProgressBar
         android:id="@+id/bankProgressBar"
         style="?android:attr/progressBarStyle"

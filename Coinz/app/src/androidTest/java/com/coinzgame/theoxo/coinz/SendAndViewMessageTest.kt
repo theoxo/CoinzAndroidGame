@@ -35,10 +35,15 @@ class SendAndViewMessageTest {
             GrantPermissionRule.grant(
                     "android.permission.ACCESS_FINE_LOCATION")
 
+    /**
+     * Tests logging in as one user, sending a message to another user, logging in as the second
+     * user and viewing the message. Thereby tests the message passing system in completion.
+     * For this test to run as expected two users need to be registered:
+     * one with email "mikey@mikeysemail.mikey" and password "mikeymikey111",
+     * and one with email "lucy@lucysemail.lucy" and password "lucylucy111".
+     */
     @Test
     fun sendAndViewMessageTest() {
-
-        val randomDouble = ThreadLocalRandom.current().nextDouble()
 
         // Added a sleep statement to match the app's execution delay.
         // The recommended way to handle such scenarios is to use Espresso idling resources:
@@ -47,39 +52,18 @@ class SendAndViewMessageTest {
 
         val appCompatAutoCompleteTextView = onView(
                 allOf(withId(R.id.email),
-                        childAtPosition(
-                                childAtPosition(
-                                        withId(R.id.textInputLayout),
-                                        0),
-                                0),
                         isDisplayed()))
         appCompatAutoCompleteTextView.perform(replaceText("mikey@mikeysemail.mikey"), closeSoftKeyboard())
 
         val appCompatEditText = onView(
                 allOf(withId(R.id.password),
-                        childAtPosition(
-                                childAtPosition(
-                                        withId(R.id.textInputLayout2),
-                                        0),
-                                0),
                         isDisplayed()))
         appCompatEditText.perform(replaceText("mikeymikey111"), closeSoftKeyboard())
 
         val appCompatButton = onView(
                 allOf(withId(R.id.email_sign_in_button), withText("Sign in"),
-                        childAtPosition(
-                                allOf(withId(R.id.linearLayout),
-                                        childAtPosition(
-                                                withId(android.R.id.content),
-                                                0)),
-                                2),
                         isDisplayed()))
         appCompatButton.perform(click())
-
-        // Added a sleep statement to match the app's execution delay.
-        // The recommended way to handle such scenarios is to use Espresso idling resources:
-        // https://google.github.io/android-testing-support-library/docs/espresso/idling-resource/index.html
-        Thread.sleep(7000)
 
         // Added a sleep statement to match the app's execution delay.
         // The recommended way to handle such scenarios is to use Espresso idling resources:
@@ -112,11 +96,6 @@ class SendAndViewMessageTest {
 
         val appCompatButton3 = onView(
                 allOf(withId(R.id.newMessageButton), withText("SEND NEW MESSAGE"),
-                        childAtPosition(
-                                childAtPosition(
-                                        withId(android.R.id.content),
-                                        0),
-                                0),
                         isDisplayed()))
         appCompatButton3.perform(click())
 
@@ -134,6 +113,9 @@ class SendAndViewMessageTest {
                                 0),
                         isDisplayed()))
         appCompatEditText2.perform(replaceText("lucy@lucysemail.lucy"), closeSoftKeyboard())
+
+        val randomDouble = ThreadLocalRandom.current().nextDouble()
+        // Random double to include in the message
 
         val appCompatEditText3 = onView(
                 allOf(withId(R.id.message),
@@ -177,11 +159,6 @@ class SendAndViewMessageTest {
 
         val appCompatButton5 = onView(
                 allOf(withId(R.id.log_out_button), withText("Log out"),
-                        childAtPosition(
-                                childAtPosition(
-                                        withId(android.R.id.content),
-                                        0),
-                                0),
                         isDisplayed()))
         appCompatButton5.perform(click())
 
@@ -285,11 +262,6 @@ class SendAndViewMessageTest {
 
         val textView = onView(
                 allOf(withId(R.id.messageTextView), withText("Test$randomDouble"),
-                        childAtPosition(
-                                childAtPosition(
-                                        withId(android.R.id.content),
-                                        0),
-                                0),
                         isDisplayed()))
         textView.check(matches(withText("Test$randomDouble")))
     }

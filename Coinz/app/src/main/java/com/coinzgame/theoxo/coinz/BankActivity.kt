@@ -102,9 +102,6 @@ class BankActivity : AppCompatActivity() {
                 "${calendar.get(Calendar.MONTH) + 1}-" +  // Add 1 as month is 0-indexed
                 "${calendar.get(Calendar.DAY_OF_MONTH)}"
 
-
-        pullFromDatabase()
-
     }
     /**
      * Switches to deposit mode, hiding irrelevant elements and showing new ones.
@@ -136,8 +133,8 @@ class BankActivity : AppCompatActivity() {
         coinSource?.get()?.run {
             addOnSuccessListener { docSnapshot ->
                 val sourceSnapshot = docSnapshot.data?.toMap()
-                if (sourceSnapshot == null) {
-                    Log.w(tag, "[pullFromDatabase] sourceSnapshot is null")
+                if (sourceSnapshot == null || sourceSnapshot.isEmpty()) {
+                    Log.w(tag, "[pullFromDatabase] sourceSnapshot is null or empty")
                 } else {
                     val items = ArrayList<Coin>()
                     if (sourceChoiceIsWallet) {
@@ -352,27 +349,33 @@ class BankActivity : AppCompatActivity() {
         // to indicate that they have been deposited (do not delete them to ensure they
         // are not added back to the map again). Also adds the gold received to the user's bank
         if (!sourceUpdate.isEmpty() && depositAmount > 0) {
-            if (source == null) {
-                Log.e(tag, "[depositSelectedCoins] Want to update source but ref to it is null")
-                enableFurtherDeposits()
-            } else if (previouslyDepositedAmount == null) {
-                Log.e(tag, "[depositSelectedCoins] previouslyDepositedAmount null")
-            } else if (previousCredit == null) {
-                Log.e(tag, "[depositSelectedCoins] previousCredit null")
-            } else {
-                sourceUpdateDone = false
-                creditUpdateDone = false
-                updateSourceWithDepositedCoins(source, sourceUpdate)
-                val newBankCredit = depositAmount + previousCredit
-                val newDepositedCounter = if (sourceModeIsWallet) {
-                    // If the user is depositing from the wallet we want to update the counter.
-                    // If not, pass updateUsersBankData null to skip it
-                    previouslyDepositedAmount + sourceUpdate.size
-                } else {
-                    null
+            when {
+                source == null -> {
+                    Log.e(tag, "[depositSelectedCoins] Want to update source but ref to it is null")
+                    enableFurtherDeposits()
                 }
+                previouslyDepositedAmount == null -> {
+                    Log.e(tag, "[depositSelectedCoins] previouslyDepositedAmount null")
+                }
+                previousCredit == null -> {
+                    Log.e(tag, "[depositSelectedCoins] previousCredit null")
 
-                updateUsersBankData(newBankCredit, newDepositedCounter)
+                }
+                else -> {
+                    sourceUpdateDone = false
+                    creditUpdateDone = false
+                    updateSourceWithDepositedCoins(source, sourceUpdate)
+                    val newBankCredit = depositAmount + previousCredit
+                    val newDepositedCounter = if (sourceModeIsWallet) {
+                        // If the user is depositing from the wallet we want to update the counter.
+                        // If not, pass setUsersBankStatus null to skip it
+                        previouslyDepositedAmount + sourceUpdate.size
+                    } else {
+                        null
+                    }
+
+                    setUsersBankStatus(newBankCredit, newDepositedCounter)
+                }
             }
         } else {
             Log.e(tag, "[depositSelectedCoins] SourceUpdate is empty or depositAmount is 0")
@@ -387,7 +390,8 @@ class BankActivity : AppCompatActivity() {
      * @param source the document reference for the source the coin was retrieved from.
      * @param sourceUpdate a map with the data to set in the source.
      */
-    private fun updateSourceWithDepositedCoins(source : DocumentReference, sourceUpdate : Map<String, Any>) {
+    private fun updateSourceWithDepositedCoins(source: DocumentReference,
+                                               sourceUpdate: Map<String, Any>) {
         source.update(sourceUpdate).run {
             addOnSuccessListener { _ ->
                 Log.d(tag, "[updateSourceWithDepositedCoins] Success with "
@@ -410,14 +414,14 @@ class BankActivity : AppCompatActivity() {
      * @param credit the amount of GOLD to set the user's credit to.
      * @param numberOfDeposited the number of deposited coins
      */
-    private fun updateUsersBankData(credit : Double, numberOfDeposited: Long?) {
+    private fun setUsersBankStatus(credit: Double, numberOfDeposited: Long?) {
         // Overwrites whatever credit is currently stored in the bank. Make sure this is
         // only called through addToUsersBank
 
         val currentDate = todaysDate  // copy field for thread safety
 
         if (currentDate == null) {
-            Log.e(tag, "[updateUsersBankData] currentDate is null, aborting")
+            Log.e(tag, "[setUsersBankStatus] currentDate is null, aborting")
         } else {
             val updateMap = if (numberOfDeposited == null) {
                 mapOf(GOLD_FIELD_TAG to credit)
@@ -427,14 +431,14 @@ class BankActivity : AppCompatActivity() {
 
             firestoreBank?.set(updateMap)?.run {
                 addOnSuccessListener { _ ->
-                    Log.d(tag, "[updateUsersBankData] Succeeded.")
+                    Log.d(tag, "[setUsersBankStatus] Succeeded.")
                     creditUpdateDone = true
                     enableFurtherDeposits()
                     toast("Successfully deposited your coins!")
                 }
 
                 addOnFailureListener { e ->
-                    Log.e(tag, "[updateUsersBankData] Failed: $e")
+                    Log.e(tag, "[setUsersBankStatus] Failed: $e")
                 }
             }
         }

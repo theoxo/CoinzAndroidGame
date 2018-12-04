@@ -1,23 +1,100 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <string tools:override="true" name="app_name">Coinz</string>
-    <string name="action_settings">Settings</string>
-    <string name="title_activity_login">Sign in to Coinz</string>
 
-    <!-- Strings related to login -->
-    <string name="prompt_email">Email</string>
-    <string name="prompt_password">Password</string>
-    <string name="action_sign_in">Sign in or register</string>
-    <string name="action_sign_in_short">Sign in</string>
-    <string name="action_register">Register with the above details</string>
+    <!-- Strings related to LoginActivity -->
+    <string name="prompt_email">
+        Email
+    </string>
+    <string name="prompt_password">
+        Password
+    </string>
+    <string name="action_sign_in_short">
+        Sign in
+    </string>
+    <string name="action_register">
+        Register with the above details
+    </string>
+    <string name="logo_description">
+        The Coinz logo.
+    </string>
+    <string name="action_reset_password">
+        Reset the password for the email above
+    </string>
 
     <!-- Strings related to the bottom navigation bar -->
-    <string name="home_nav_button">Home</string>
-    <string name="account_nav_button">Account</string>
-    <string name="messaging_nav_button">Messages</string>
+    <string name="home_nav_button">
+        Home
+    </string>
+    <string name="account_nav_button">
+        Account
+    </string>
+    <string name="messaging_nav_button">
+        Messages
+    </string>
 
-    <!-- Strings related to the bank -->
+    <!-- Strings related to the BankActivity -->
     <string name="bankText">
         Loading your bank data…
+    </string>
+    <string name="bank_logo_description">
+        The bank logo.
+    </string>
+    <string name="deposit_button_text">
+        Deposit
+    </string>
+    <string name="coin_location_prompt">
+        Where do you want to deposit coins from?
+    </string>
+    <string name="inbox_choice_button_text">
+        My Inbox
+    </string>
+    <string name="wallet_choice_button_text">
+        My Wallet
+    </string>
+
+    <!-- Strings related to displaying Coins in a ListView -->
+    <string name="coinListItemText">
+        %s: %.2f
+    </string>
+
+    <!-- Default text value to set when we expect the text to be set programmatically later -->
+    <string name="default_text">
+        DEFAULT TEXT (if you can see this, something\'s probably gone wrong!)
+    </string>
+
+    <!-- Strings related to MessageCreationActivity -->
+    <string name="message_text_prompt">
+        Message (max 140 characters)
+    </string>
+    <string name="target_email_prompt">
+        Email of recipient
+    </string>
+    <string name="attach_coins_text">
+        Coins to attach:
+    </string>
+    <string name="send_button_text">
+        SEND
+    </string>
+    <string name="cant_send_coins_text">
+        In order to send coins to\nother players, you must\nfirst have banked 25 coins\nfrom your wallet today.
+    </string>
+
+    <!-- Strings related to AccountFragment -->
+    <string name="log_out_button_text">
+        Log out
+    </string>
+
+    <!-- Strings related to InboxFragment -->
+    <string name="start_message_creation_button_text">
+        SEND NEW MESSAGE
+    </string>
+    <string name="inbox_text">
+        Inbox
+    </string>
+
+    <!-- Strings related to MapFragment -->
+    <string name="no_active_combo_text">
+        No combo
     </string>
 
 </resources>

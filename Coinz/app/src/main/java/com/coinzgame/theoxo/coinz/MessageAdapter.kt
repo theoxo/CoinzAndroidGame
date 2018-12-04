@@ -14,7 +14,8 @@ import android.widget.TextView
  * @param messages the messages to put in the list view.
  */
 
-class MessageAdapter(context : Context, messages : ArrayList<Message>) : ArrayAdapter<Message>(context, 0, messages) {
+class MessageAdapter(context: Context, messages: ArrayList<Message>)
+    : ArrayAdapter<Message>(context, 0, messages) {
 
     override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
         val message : Message? =  getItem(position)

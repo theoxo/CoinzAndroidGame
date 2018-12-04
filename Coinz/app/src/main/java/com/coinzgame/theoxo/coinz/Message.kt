@@ -18,16 +18,19 @@ class Message(messageJSON: JSONObject) {
 
     private val tag = "MessageClass"
 
-    var timestamp : String? = null
-    var senderEmail : String? = null
-    var messageText : String? = null
-    var attachedCoins : ArrayList<Coin>? = null
+    var timestamp: String? = null
+    var senderEmail: String? = null
+    var messageText: String? = null
+    var attachedCoins: ArrayList<Coin>? = null
 
 
     init {
+        // First get the elementary data from the JSON we were given
         this.timestamp = messageJSON.get(TIMESTAMP).toString()
         this.senderEmail = messageJSON.get(SENDER).toString()
 
+        // Now loop over any and all coins which were attached to the message, adding
+        // them into our list of attached coins
         this.attachedCoins = ArrayList()
         messageText = messageJSON.getString(MESSAGE_TEXT)
         val messageAttachments = JSONArray(messageJSON.getString(MESSAGE_ATTACHMENTS))
@@ -35,15 +38,19 @@ class Message(messageJSON: JSONObject) {
             val attachment : JSONObject? = messageAttachments[i] as? JSONObject
             val currency : String? = attachment?.getString(CURRENCY)
             val value : Double? = attachment?.getDouble(VALUE)
-            // Need an ID for the coin. Let's generate a unique one from the timestamp
-            // and index in the message
             when {
                 currency == null -> Log.e(tag, "[constructor] currency is null at $i")
                 value == null -> Log.e(tag, "[constructor] value is null at $i")
                 else -> {
+                    // Need an ID for the coin. Let's generate a unique one from the timestamp
+                    // and index in the message
                     val id = "$currency|$timestamp$i"
-                    Log.d(tag, "[constructor] Adding coin $i to attachedCoins")
+
+                    // Set up the coin with the values we've retrieved and generated
                     val coin = Coin(id, currency, value)
+
+                    // Add it to our list
+                    Log.d(tag, "[constructor] Adding coin $i to attachedCoins")
                     attachedCoins?.add(coin)
                 }
             }
@@ -52,18 +59,23 @@ class Message(messageJSON: JSONObject) {
 
 
     /**
-     * Gets a tag for the message which can be used to store it in the database.
+     * Gets a tag for the message which can be used as its key in the database.
      *
      * @return the tag generated.
      */
     fun getMessageTag() : String {
-        return "$timestamp|$senderEmail".replace('.', ':')
+        // Generate the tag from the timestamp of the message and the user we retrieved it from
+        // in a way that adheres to the firebase assumptions here:
+        // https://firebase.google.com/docs/firestore/quotas
+        // and also which does not contain periods as this bears a special meaning in
+        // Firestore.
+        return "`$timestamp|$senderEmail`".replace('.', ':')
     }
 
     /**
-     * Generates a JSON representation of the message.
+     * Generates a JSON String representation of the message.
      *
-     * @return the JSON containing all the message's data.
+     * @return a String representation of the JSON containing all the message's data.
      */
     fun toJSONString() : String {
         val json = JSONObject()
@@ -81,7 +93,7 @@ class Message(messageJSON: JSONObject) {
      * @param coin the coin to remove.
      * @return whether the removal was successful.
      */
-    fun removeCoin(coin : Coin) : Boolean? {
+    fun removeCoin(coin: Coin) : Boolean? {
         return attachedCoins?.remove(coin)
     }
 
