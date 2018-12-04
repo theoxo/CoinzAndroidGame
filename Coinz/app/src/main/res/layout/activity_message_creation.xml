@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Layout for the MessageCreationActivity. -->
+<!-- Sets the theme to make the activity appear as a pop-up dialog. -->
 <android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -25,11 +27,13 @@
         app:layout_constraintTop_toBottomOf="@id/messageSentProgressBar"
         app:layout_constraintVertical_bias="0.0">
 
+        <!-- Let the user input the email of the target user. -->
         <EditText
             android:id="@+id/targetEmail"
+            android:importantForAutofill="no"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Email of recipient"
+            android:hint="@string/target_email_prompt"
             android:inputType="textEmailAddress"
             android:maxLines="1"
             android:singleLine="true" />
@@ -49,11 +53,13 @@
         app:layout_constraintTop_toBottomOf="@+id/textInputLayout"
         app:layout_constraintVertical_bias="0.0">
 
+        <!-- Let the user enter a message 140 characters or less. -->
         <EditText
             android:id="@+id/message"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Message (max 140 characters)"
+            android:importantForAutofill="no"
+            android:hint="@string/message_text_prompt"
             android:maxLength="140"
             android:imeActionId="6"
             android:imeActionLabel="@string/action_sign_in_short"
@@ -63,20 +69,16 @@
 
     </android.support.design.widget.TextInputLayout>
 
-    <EditText
+    <!-- Prompt the user whether they want to attach any coins. -->
+    <TextView
         android:id="@+id/selectCoinsText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="8dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="12dp"
         android:layout_marginBottom="8dp"
-        android:ems="10"
-        android:focusable="false"
-        android:focusableInTouchMode="false"
-        android:inputType="none"
-        android:longClickable="false"
-        android:text="Coins to attach:"
+        android:text="@string/attach_coins_text"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
@@ -84,6 +86,7 @@
         app:layout_constraintTop_toBottomOf="@+id/textInputLayout2"
         app:layout_constraintVertical_bias="0.0" />
 
+    <!-- Dynamically list the coins which the user can send to their friend. -->
     <ListView
         android:id="@+id/coinsListView"
         android:layout_width="0dp"
@@ -96,6 +99,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/selectCoinsText" />
 
+    <!-- Define a button which indicates the message should be sent. -->
     <Button
         android:id="@+id/sendButton"
         style="@style/Widget.AppCompat.Button.Colored"
@@ -105,11 +109,13 @@
         android:layout_marginTop="32dp"
         android:layout_marginEnd="8dp"
         android:enabled="false"
-        android:text="SEND"
+        android:text="@string/send_button_text"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- This progress bar will be displayed whilst waiting to receive the coins to put in
+         the ListView. -->
     <ProgressBar
         android:id="@+id/coinListProgressBar"
         style="?android:attr/progressBarStyle"
@@ -123,6 +129,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/selectCoinsText" />
 
+    <!-- Display this process bar whilst the message is being added to the target user's inbox. -->
     <ProgressBar
         android:id="@+id/messageSentProgressBar"
         style="?android:attr/progressBarStyle"
@@ -136,6 +143,8 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/sendButton" />
 
+    <!-- Show this text if the user does not have any spare change they can send (i.e. they
+         haven't deposited 25 coins today yet. -->
     <TextView
         android:id="@+id/notElligbleText"
         android:layout_width="wrap_content"
@@ -143,7 +152,7 @@
         android:layout_marginStart="8dp"
         android:layout_marginTop="30dp"
         android:layout_marginEnd="8dp"
-        android:text="In order to send coins to\nother players, you must\nfirst have banked 25 coins today."
+        android:text="@string/cant_send_coins_text"
         android:textStyle="italic"
         android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"

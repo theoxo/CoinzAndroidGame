@@ -12,7 +12,6 @@ import com.mapbox.android.core.permissions.PermissionsListener
 import com.mapbox.android.core.permissions.PermissionsManager
 import com.mapbox.geojson.Feature
 import com.mapbox.mapboxsdk.Mapbox
-import com.mapbox.mapboxsdk.maps.MapboxMap
 import kotlinx.android.synthetic.main.activity_main.*
 import org.jetbrains.anko.alert
 import java.util.*
@@ -33,7 +32,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
     private lateinit var permissionsManager : PermissionsManager
 
     // Locally saved data tracking
-    internal var currentDate : String? = null // FORMAT YYYY/MM/DD
+    internal var currentDate : String? = null // FORMAT YYYY-MM-DD
     private var lastDownloadDate : String? = null
     internal var cachedMap : String? = null
     internal var ancientCoins = ArrayList<Feature>()
@@ -50,7 +49,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
     private var accountFragment: AccountFragment = AccountFragment()
 
     /**
-     * Sets up the local firestore references and greets the user if they are new.
+     * Sets up the local Firestore references and greets the user if they are new.
+     * Also sets up the Mapbox instance used for [MapFragment].
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -74,9 +74,11 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
                         + "set to high accuracy mode.\n\nUse the floating action buttons to "
                         + "switch between inspecting coins and picking them up when you "
                         + "click on them.\nPicking a coin up starts a combo (displayed in the top "
-                        + "right -- utilize this to maximize your income!\n\n"
+                        + "right) -- utilize this to maximize your income!\n\n"
                         + "You can then exchange the coins you've collected "
-                        + "for gold by visiting the bank, and send spare change to your friends.")
+                        + "for gold by visiting the bank, and send spare change to your friends\n"
+                        + "(the coins in your wallet will be considered spare change if you have "
+                        + "deposited 25 coins today).")
                 title = "Hello there... Looks like you're new!"
                 positiveButton("Got it!"){}
             }.show()
@@ -180,8 +182,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
 
     /**
      * Saves the user preferences if needed.
-     * The user preferences are stored on the device only if [lastDownloadDate]
-     * has changed since the last time they were stored.
+     * The user preferences are stored on the device only if [lastDownloadDate] does not match
+     * [currentDate].
      */
     override fun onStop() {
         super.onStop()
@@ -208,7 +210,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
     /**
      * Handles user clicks on the [BottomNavigationView], starting the corresponding activities.
      *
-     * @param item the menu item clicked
+     * @param item the menu item clicked.
+     * @return whether the click event was consumed.
      */
     override fun onNavigationItemSelected(item : MenuItem): Boolean {
         Log.d(tag, "[onNavigationItemSelected] Clicked")
@@ -285,6 +288,9 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
         }
     }
 
+    /**
+     * Presents a dialog explaining to the user why the location permission is needed.
+     */
     override fun onExplanationNeeded(permissionsToExplain: MutableList<String>?) {
         // Recall that the only permission we need to request is the user location.
         alert {
@@ -309,9 +315,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
         if (granted) {
           startMapFragment()
         } else {
-            Log.e(tag, "[onPermissionResult] Permissions not granted")
-            // Explain to the user why we need the location permission
-            onExplanationNeeded(null)
+            Log.w(tag, "[onPermissionResult] Permissions not granted")
         }
     }
 

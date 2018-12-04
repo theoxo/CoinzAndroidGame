@@ -52,7 +52,7 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
                         + "successfully downloaded.")
             if (thisContext != null) {
                 // Let the user know that the download failed.
-                displayNotificationWithTitleAndText(title, text)
+                displayNotificationWithTitleAndText(title, text, COINZ_DOWNLOAD_NOTIFICATION_ID)
             }
         } else {
             // We have successfully downloaded today's map. Update this in the local storage.
@@ -68,7 +68,7 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
                 // We should also notify the user that the download was completed in the background.
                 val title = "Coinz Background Download"
                 val text = "Today's map has been downloaded onto your device."
-                displayNotificationWithTitleAndText(title, text)
+                displayNotificationWithTitleAndText(title, text, COINZ_DOWNLOAD_NOTIFICATION_ID)
 
             } else {
                 Log.w(tag, "[downloadComplete] context or date is null. Map will have to be "
@@ -107,7 +107,7 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
 
             intent?.action == ALARM_ACTION -> {
                 // Have received one of our alarms. Attempt to spawn ancient coins
-                handleAlarmEvent(context)
+                handleSpawnAlarm(context)
             }
 
             intent?.action == OVERWRITE_ALARM_ACTION -> {
@@ -124,7 +124,13 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
         }
     }
 
-    private fun handleAlarmEvent(context: Context) {
+    /**
+     * Handles one of our ancient coin spawn alarms triggering.
+     * First makes sure we have today's map downloaded and then invokes [spawnAncientCoins].
+     *
+     * @param context the context in which to get the data stored on the device.
+     */
+    private fun handleSpawnAlarm(context: Context) {
         // Get current date
         val year : String = Calendar.getInstance().get(Calendar.YEAR).toString()
         // Add one to the month as it is 0-indexed
@@ -164,6 +170,14 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
         }
     }
 
+    /**
+     * Saves any and all ancient coins generated to the user's device.
+     *
+     * @param shil the ancient coin of the SHIL currency, or null
+     * @param quid the ancient coin of the QUID currency, or null
+     * @param dolr the ancient coin of the DOLR currency, or null
+     * @param peny the ancient coin of the PENY currency, or null
+     */
     private fun saveAncientCoins(shil: JSONObject?, quid: JSONObject?, dolr: JSONObject?,
                                  peny: JSONObject?) {
         val preferenceContext = context
@@ -216,6 +230,11 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
         editor.apply()
     }
 
+    /**
+     * Set up the alarms for the ancient coin spawn timers on the device.
+     *
+     * @param context the context to set up the Intents in.
+     */
     private fun setUpAlarms(context: Context) {
 
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
@@ -478,7 +497,7 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
         var json : JSONObject? = null
 
         val p = ThreadLocalRandom.current().nextDouble(0.0, 1.0)
-        if (p < ANCIENT_COIN_SPAWN_CHANCE) {
+        if (p < 0.5) {
             // Success! The coin shall be spawned.
             // Make its value 5 * the given top value of its currency:
             val value = (topCoinValue * 5).toString()
@@ -494,9 +513,9 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
             json = JSONObject()
             json.put("type", "Feature")
             val propertiesJson = JSONObject()
-            propertiesJson.put("id", id)
-            propertiesJson.put("value", value)
-            propertiesJson.put("currency", currency)
+            propertiesJson.put(ID, id)
+            propertiesJson.put(VALUE, value)
+            propertiesJson.put(CURRENCY, currency)
             json.put("properties", propertiesJson)
             val geometryJson = JSONObject()
             geometryJson.put("type", "Point")
@@ -538,13 +557,14 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
         var notificationBody = ""
         for (coinJson in coins) {
             // Add a short description for reach ancient coin
-            val currency = coinJson.getJSONObject("properties").getString("currency")
-            val value = coinJson.getJSONObject("properties").getString("value")
+            val currency = coinJson.getJSONObject("properties").getString(CURRENCY)
+            val value = coinJson.getJSONObject("properties").getString(VALUE)
             notificationBody += "* $value $currency"
         }
 
         // Attempt to fire off the notification
-        displayNotificationWithTitleAndText(notificationTitle, notificationBody)
+        displayNotificationWithTitleAndText(
+                notificationTitle, notificationBody,COINZ_SPAWN_NOTIFICATION)
 
     }
 
@@ -553,9 +573,11 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
      *
      * @param title the notification's title.
      * @param text the desired text for the notification.
+     * @param id the id of the notification to display
      */
     private fun displayNotificationWithTitleAndText(title : String,
-                                                    text : String) {
+                                                    text : String,
+                                                    id: Int) {
 
         Log.d(tag, "[displayNotificationWithTitleAndText] Invoked")
         val notificationContext = context
@@ -588,7 +610,7 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
 
         // Display the notification on the user's device.
         with(NotificationManagerCompat.from(notificationContext)) {
-            notify(0, notificationBuilder.build())
+            notify(id, notificationBuilder.build())
         }
     }
 }

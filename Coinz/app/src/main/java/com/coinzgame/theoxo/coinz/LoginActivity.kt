@@ -78,6 +78,10 @@ class LoginActivity : AppCompatActivity() {
             createUser(email.text.toString(), password.text.toString())
         }
 
+        reset_password_button.setOnClickListener {
+            resetPassword(email.text.toString())
+        }
+
         // Check if this is the first time the app is being run on this device; if so,
         // set up the alarms for ancient coin spawn timings.
         val storedPrefs = getSharedPreferences(PREFERENCES_FILE, Context.MODE_PRIVATE)
@@ -119,18 +123,32 @@ class LoginActivity : AppCompatActivity() {
     }
 
     /**
-     * Enables and disables the "Sign in" and "Register" buttons depending on the text values.
+     * Enables and disables the buttons depending on the text field values.
      * This is so that the [FirebaseAuth] methods do not throw errors due to the text values
-     * being null.
+     * being null or empty.
      */
     private fun updateButtons() {
-        if (!pwEmpty && !emailEmpty) {
-            // If both textfields are non-empty, enable the buttons
-            email_sign_in_button.isEnabled = true
-            email_register_button.isEnabled = true
-        } else {
-            email_sign_in_button.isEnabled = false
-            email_register_button.isEnabled = false
+        when {
+            !pwEmpty && !emailEmpty -> {
+                // Both textfields are non-empty, enable all the buttons
+                email_sign_in_button.isEnabled = true
+                email_register_button.isEnabled = true
+                reset_password_button.isEnabled = true
+            }
+
+            !emailEmpty -> {
+                // Email is non-empty but password is. Only allow password resets
+                reset_password_button.isEnabled = true
+                email_sign_in_button.isEnabled = false
+                email_register_button.isEnabled = false
+            }
+
+            else -> {
+                // Do not allow anything.
+                reset_password_button.isEnabled = false
+                email_sign_in_button.isEnabled = false
+                email_register_button.isEnabled = false
+            }
         }
     }
 
@@ -195,6 +213,37 @@ class LoginActivity : AppCompatActivity() {
                     }
         } catch (e: FirebaseException) {
             Log.e(tag, "[signInUser]: Log in failed with exception $e")
+        }
+    }
+
+    /**
+     * Attempts to send a password-reset email to the user.
+     *
+     * @param email the email of the user requesting the reset.
+     */
+    private fun resetPassword(email: String) {
+        progressBar.visibility = View.VISIBLE
+        email_sign_in_button.isEnabled = false
+        email_register_button.isEnabled = false
+        try {
+            mAuth?.sendPasswordResetEmail(email)
+                    ?.addOnCompleteListener {
+                        // Whatever the result is, hide the progress bar upon completion
+                        // and re-enable the appropriate buttons
+                        this@LoginActivity.progressBar.visibility = View.GONE
+                        updateButtons()
+
+                        if (it.isSuccessful) {
+                            Log.d(tag, "[resetPassword]: Reset the password for $email")
+                            toast("Sent password reset email")
+                        } else {
+                            Log.d(tag, "[resetPassword]: Completed but failed to reset pw "
+                                    + "for $email")
+                            toast("Password reset failed. Are you a registered user?")
+                        }
+                    }
+        } catch (e: FirebaseException) {
+            Log.e(tag, "[resetPassword]: Failed with exception $e")
         }
     }
 

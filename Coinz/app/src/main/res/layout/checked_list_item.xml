@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 
+<!-- Define the layout for an item in a multiple-choice list (with a check mark). -->
 <CheckedTextView xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/checkedListItemText"
     android:checkMark="?android:attr/listChoiceIndicatorMultiple"
@@ -10,5 +11,5 @@
     android:paddingStart="?android:attr/listPreferredItemPaddingStart"
     android:paddingEnd="?android:attr/listPreferredItemPaddingEnd"
     android:minHeight="?android:attr/listPreferredItemHeightSmall"
-    android:text="Hi mom"
+    android:text="@string/default_text"
      />

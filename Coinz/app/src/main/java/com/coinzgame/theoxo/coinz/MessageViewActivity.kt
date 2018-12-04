@@ -3,7 +3,7 @@ package com.coinzgame.theoxo.coinz
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
-import kotlinx.android.synthetic.main.activity_mail_view.*
+import kotlinx.android.synthetic.main.activity_message_view.*
 import org.json.JSONObject
 
 /**
@@ -20,7 +20,7 @@ class MessageViewActivity : AppCompatActivity() {
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_mail_view)
+        setContentView(R.layout.activity_message_view)
 
         // Get the retrieved message
         val messageJSONStr = intent?.getStringExtra(MESSAGE_JSON_STRING)

@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Defines the color theme used throughout the app -->
 <resources>
     <color name="colorPrimaryDark">#999999</color>
     <color name="colorPrimary">#EEEEEE</color>

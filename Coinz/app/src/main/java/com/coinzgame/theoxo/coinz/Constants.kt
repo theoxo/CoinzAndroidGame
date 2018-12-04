@@ -20,9 +20,9 @@ const val TIMESTAMP = "Timestamp"
 const val SENDER = "SenderEmail"
 
 // Coin class tags
-const val CURRENCY = "Currency"
-const val VALUE = "Value"
-const val ID = "ID"
+const val CURRENCY = "currency"
+const val VALUE = "value"
+const val ID = "id"
 
 // Ancient coin tags and spawn chance
 const val ANCIENT_SHIL = "Ancient SHIL coin"
@@ -33,9 +33,12 @@ const val ANCIENT_COIN_SPAWN_CHANCE = 0.03125
 
 // Alarm managing tags
 const val ALARM_ACTION = "AncientCoinAlarmAction"
+const val OVERWRITE_ALARM_ACTION = "OverwriteAlarmAction"
 const val COINZ_CHANNEL_ID = "CoinzNotificationChannel"
 const val COINZ_CHANNEL_NAME = "Coinz Notifications"
-const val OVERWRITE_ALARM_ACTION = "OverwriteAlarmAction"
+const val COINZ_DOWNLOAD_NOTIFICATION_ID = 1
+const val COINZ_SPAWN_NOTIFICATION = 2
+
 
 // Local saved data file
 const val PREFERENCES_FILE = "CoinzPrefsFile"

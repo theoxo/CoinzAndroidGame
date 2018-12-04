@@ -34,7 +34,6 @@ import org.jetbrains.anko.design.snackbar
 import org.jetbrains.anko.toast
 import org.json.JSONException
 import org.json.JSONObject
-import java.util.*
 import kotlin.collections.HashMap
 
 /**
@@ -225,9 +224,9 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
                             val lat: Double = point.latitude()
                             val long: Double = point.longitude()
                             val properties: JsonObject? = feature.properties()
-                            val id: String? = properties?.get("id")?.asString
-                            val value: String? = properties?.get("value")?.asString
-                            val currency: String? = properties?.get("currency")?.asString
+                            val id: String? = properties?.get(ID)?.asString
+                            val value: String? = properties?.get(VALUE)?.asString
+                            val currency: String? = properties?.get(CURRENCY)?.asString
 
                             when {
                                 id == null -> {
@@ -239,7 +238,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
                                 value == null -> {
                                     Log.e(fragTag, "[addMarkers] value of feature is null")
                                 }
-                                docSnapshot["$currency|$id"] != null -> {
+                                docSnapshot["`$currency|$id`"] != null -> {
                                     // Coin has already been collected by the user. skip it
                                 }
                                 else -> {
@@ -536,8 +535,8 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
             // We don't want to push this to the database. Return early
             return
         }
-        // Generate a map of currency|id -> json-string as expected by the database
-        val coinMap: Map<String, String> = mapOf("$currency|$coinId" to coinJsonString)
+        // Generate a map of `currency|id` -> json-string as expected by the database
+        val coinMap: Map<String, String> = mapOf("`$currency|$coinId`" to coinJsonString)
 
         mainActivity?.firestoreWallet?.get()?.run {
             addOnSuccessListener { docSnapshot ->
@@ -557,7 +556,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
                 } else {
                     // Doc doesn't exist, create it
                     Log.d(fragTag, "[updateWallet] Setting up new doc")
-                    mainActivity?.firestoreWallet?.set(coin)?.run {
+                    mainActivity?.firestoreWallet?.set(coinMap)?.run {
                         addOnSuccessListener {
                             Log.d(fragTag,"[updateWallet] Created wallet, added coin " +
                                     "$coinId of currency $currency with value $value")

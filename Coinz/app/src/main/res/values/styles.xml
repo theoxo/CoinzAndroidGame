@@ -2,16 +2,13 @@
 
     <!-- Base application theme. -->
     <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
-        <!-- Customize your theme here. -->
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
         <item name="android:windowActivityTransitions">true</item>
-        <!-- <item name="android:textColor">#444444</item> -->
-        <!-- <item name="android:colorButtonNormal">@color/colorAccent</item>
-        <item name="colorButtonNormal">@color/colorAccent</item> -->
     </style>
 
+    <!-- Extension of the base theme which hides the action bar. -->
     <style name="AppTheme.NoActionBar" parent="AppTheme">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
@@ -21,6 +18,8 @@
 
     <style name="AppTheme.PopupOverlay" parent="AppTheme" />
 
+    <!-- Extension of the base theme which makes the activity look like a dialog. -->
+    <!-- Used for the BankActivity, MessageViewActivity, and MessageCreationActivity. -->
     <style name="AppTheme.Dialog" parent="Theme.AppCompat.Light.Dialog">
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-
+<!-- Defines the layout of a list item which doesn't have a check mark. -->
 <TextView xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/standardListItemText"
     android:layout_width="match_parent"
@@ -8,5 +8,5 @@
     android:paddingStart="?android:attr/listPreferredItemPaddingStart"
     android:paddingEnd="?android:attr/listPreferredItemPaddingEnd"
     android:minHeight="?android:attr/listPreferredItemHeightSmall"
-    android:text="Hi mom"
+    android:text="@string/default_text"
      />

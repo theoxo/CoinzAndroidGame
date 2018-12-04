@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Layout for the MainActivity which contains the fragments -->
 <android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -8,6 +9,7 @@
     android:animateLayoutChanges="true"
     tools:context=".MainActivity">
 
+    <!-- The bottom navigation bar to switch between the fragments -->
     <android.support.design.widget.BottomNavigationView
         android:id="@+id/bottom_nav_bar"
         android:layout_width="wrap_content"
@@ -25,6 +27,7 @@
         app:menu="@menu/navigation_menu">
     </android.support.design.widget.BottomNavigationView>
 
+    <!-- Layout to inflate the fragments in. -->
     <FrameLayout
         android:id="@+id/fragmentContainer"
         android:layout_width="match_parent"
