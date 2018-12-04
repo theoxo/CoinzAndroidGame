@@ -62,11 +62,6 @@
         DEFAULT TEXT (if you can see this, something\'s probably gone wrong!)
     </string>
 
-    <!-- Strings related to displaying a Message in a MessageViewActivity -->
-    <string name="messageText">
-        %s\n\n%s
-    </string>
-
     <!-- Strings related to MessageCreationActivity -->
     <string name="message_text_prompt">
         Message (max 140 characters)

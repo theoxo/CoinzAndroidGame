@@ -18,10 +18,10 @@ class Message(messageJSON: JSONObject) {
 
     private val tag = "MessageClass"
 
-    var timestamp : String? = null
-    var senderEmail : String? = null
-    var messageText : String? = null
-    var attachedCoins : ArrayList<Coin>? = null
+    var timestamp: String? = null
+    var senderEmail: String? = null
+    var messageText: String? = null
+    var attachedCoins: ArrayList<Coin>? = null
 
 
     init {
@@ -93,7 +93,7 @@ class Message(messageJSON: JSONObject) {
      * @param coin the coin to remove.
      * @return whether the removal was successful.
      */
-    fun removeCoin(coin : Coin) : Boolean? {
+    fun removeCoin(coin: Coin) : Boolean? {
         return attachedCoins?.remove(coin)
     }
 

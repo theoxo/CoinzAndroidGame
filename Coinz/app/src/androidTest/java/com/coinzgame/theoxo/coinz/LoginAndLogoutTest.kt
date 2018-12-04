@@ -34,6 +34,11 @@ class LoginAndLogoutTest {
             GrantPermissionRule.grant(
                     "android.permission.ACCESS_FINE_LOCATION")
 
+    /**
+     * Tests logging in and back out again.
+     * For this test to run as expected a user with email "mikey@mikeysemail.mikey" and
+     * password "mikeymikey111" needs to be registered.
+     */
     @Test
     fun loginAndLogoutTest() {
         // Added a sleep statement to match the app's execution delay.
@@ -61,11 +66,6 @@ class LoginAndLogoutTest {
                                 2),
                         isDisplayed()))
         appCompatButton.perform(click())
-
-        // Added a sleep statement to match the app's execution delay.
-        // The recommended way to handle such scenarios is to use Espresso idling resources:
-        // https://google.github.io/android-testing-support-library/docs/espresso/idling-resource/index.html
-        Thread.sleep(7000)
 
         // Added a sleep statement to match the app's execution delay.
         // The recommended way to handle such scenarios is to use Espresso idling resources:
@@ -103,11 +103,6 @@ class LoginAndLogoutTest {
 
         val appCompatButton3 = onView(
                 allOf(withId(R.id.log_out_button), withText("Log out"),
-                        childAtPosition(
-                                childAtPosition(
-                                        withId(android.R.id.content),
-                                        0),
-                                0),
                         isDisplayed()))
         appCompatButton3.perform(click())
 

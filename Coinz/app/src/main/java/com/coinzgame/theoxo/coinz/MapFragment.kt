@@ -176,7 +176,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
      *
      * @param geoJsonString The downloaded GeoJSON which describes the coins.
      */
-    private fun addMarkers(geoJsonString : String) {
+    private fun addMarkers(geoJsonString: String) {
         Log.d(fragTag, "addMarkers invoked")
 
         // First of all ensure we have a non-null copy of the activity we are attached to

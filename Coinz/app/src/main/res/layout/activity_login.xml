@@ -94,7 +94,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/email_sign_in_button" />
 
-    <!-- Display the game's logo at the top of the page -->
+    <!-- Button to let the user reset their password -->
     <Button
         android:id="@+id/reset_password_button"
         style="@style/Widget.AppCompat.Button.Borderless.Colored"
@@ -110,6 +110,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/email_register_button" />
 
+    <!-- Display the game's logo at the top of the page -->
     <ImageView
         android:id="@+id/coinzLogoView"
         android:layout_width="wrap_content"

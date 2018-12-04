@@ -130,21 +130,17 @@ class MessageCreationActivity : AppCompatActivity() {
             val sentCoinsDeletionMap = HashMap<String, String>()
 
             val ticks = coinsListView.checkedItemPositions
-            val listViewLength = if (ticks == null) {
-                0
-                // If the ticks is null, likely because the user is not allowed to
-                // send any coins, set this to 0 to not loop over them.
-            } else {
-                ticks.size()
-            }
+            // If the ticks is null, likely because the user is not allowed to
+            // send any coins, set the loop target to 0 to skip the coins
+            val listViewLength = ticks?.size() ?: 0
             for (i in 0 until listViewLength) {
                 if (ticks[i]) {
                     // If the coin is ticked,
                     // add it to the email body
-                    val coin : Coin? = coinsListView.getItemAtPosition(i) as? Coin
-                    val currency : String? = coin?.currency
-                    val value : Double? = coin?.value
-                    val id : String? = coin?.id
+                    val coin: Coin? = coinsListView.getItemAtPosition(i) as? Coin
+                    val currency: String? = coin?.currency
+                    val value: Double? = coin?.value
+                    val id: String? = coin?.id
                     when {
                         coin == null -> {
                             Log.e(tag, "[generateMessage] Could not cast item at pos $i to coin")
@@ -164,7 +160,7 @@ class MessageCreationActivity : AppCompatActivity() {
                             coinJSON.put(CURRENCY, currency)
                             coinJSON.put(VALUE, value)
                             addedCoins.add(coinJSON)
-                            sentCoinsDeletionMap["$currency|$id"] = COIN_DEPOSITED
+                            sentCoinsDeletionMap["`$currency|$id`"] = COIN_DEPOSITED
                         }
                     }
                 }
@@ -173,10 +169,10 @@ class MessageCreationActivity : AppCompatActivity() {
             messageJSON.put(MESSAGE_ATTACHMENTS, addedCoins)
             messageJSON.put(MESSAGE_TEXT, message.text.toString())
             messageJSON.put(SENDER, currentUserEmail)
-            messageJSON.put(TIMESTAMP, "${currentTime.get(Calendar.DAY_OF_MONTH)}-" +
-                    "${currentTime.get(Calendar.MONTH) + 1}-${currentTime.get(Calendar.YEAR)}" +
-                    " ${currentTime.get(Calendar.HOUR_OF_DAY)}:${currentTime.get(Calendar.MINUTE)}" +
-                    ":${currentTime.get(Calendar.SECOND)}")
+            messageJSON.put(TIMESTAMP, "${currentTime.get(Calendar.DAY_OF_MONTH)}-"
+                    + "${currentTime.get(Calendar.MONTH) + 1}-${currentTime.get(Calendar.YEAR)}"
+                    + " ${currentTime.get(Calendar.HOUR_OF_DAY)}:${currentTime.get(Calendar.MINUTE)}"
+                    + ":${currentTime.get(Calendar.SECOND)}")
 
             val  generatedMessage = Message(messageJSON)
 

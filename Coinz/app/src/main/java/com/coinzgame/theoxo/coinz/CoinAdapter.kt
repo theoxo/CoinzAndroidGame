@@ -15,8 +15,8 @@ import android.widget.TextView
  * @param coins the coins to put in the list.
  * @param listIsMultipleChoice whether the target list view is in multiple choice mode.
  */
-class CoinAdapter(context : Context, coins : ArrayList<Coin>,
-                  private var listIsMultipleChoice : Boolean)
+class CoinAdapter(context: Context, coins: ArrayList<Coin>,
+                  private var listIsMultipleChoice: Boolean)
     : ArrayAdapter<Coin>(context, 0, coins) {
 
     override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {

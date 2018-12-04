@@ -390,7 +390,8 @@ class BankActivity : AppCompatActivity() {
      * @param source the document reference for the source the coin was retrieved from.
      * @param sourceUpdate a map with the data to set in the source.
      */
-    private fun updateSourceWithDepositedCoins(source : DocumentReference, sourceUpdate : Map<String, Any>) {
+    private fun updateSourceWithDepositedCoins(source: DocumentReference,
+                                               sourceUpdate: Map<String, Any>) {
         source.update(sourceUpdate).run {
             addOnSuccessListener { _ ->
                 Log.d(tag, "[updateSourceWithDepositedCoins] Success with "

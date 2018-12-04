@@ -34,6 +34,12 @@ class NewMessageAvailableTest {
             GrantPermissionRule.grant(
                     "android.permission.ACCESS_FINE_LOCATION")
 
+    /**
+     * Tests logging in, switching to the [InboxFragment] and checking if the new message button
+     * is available.
+     * The purpose of this test is really to make sure navigating to and loading the [InboxFragment]
+     * works as expected.
+     */
     @Test
     fun newMessageAvailableTest() {
         // Added a sleep statement to match the app's execution delay.
@@ -81,11 +87,6 @@ class NewMessageAvailableTest {
                                 2),
                         isDisplayed()))
         appCompatButton.perform(click())
-
-        // Added a sleep statement to match the app's execution delay.
-        // The recommended way to handle such scenarios is to use Espresso idling resources:
-        // https://google.github.io/android-testing-support-library/docs/espresso/idling-resource/index.html
-        Thread.sleep(7000)
 
         // Added a sleep statement to match the app's execution delay.
         // The recommended way to handle such scenarios is to use Espresso idling resources:

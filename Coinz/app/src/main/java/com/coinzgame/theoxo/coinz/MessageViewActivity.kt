@@ -28,8 +28,8 @@ class MessageViewActivity : AppCompatActivity() {
 
         // Update the title and  textview accordingly
         title = "${message.senderEmail}"
-        messageTextView.text = getString(R.string.messageText, message.timestamp,
-                message.messageText)
+        messageTimestampTextView.text = "${message.timestamp}"
+        messageTextView.text = "${message.messageText}"
 
         val attachedCoins = message.attachedCoins
         if (attachedCoins == null || attachedCoins.size == 0) {

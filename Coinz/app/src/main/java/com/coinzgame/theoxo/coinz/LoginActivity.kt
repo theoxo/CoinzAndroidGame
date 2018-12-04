@@ -162,6 +162,7 @@ class LoginActivity : AppCompatActivity() {
         progressBar.visibility = View.VISIBLE
         email_sign_in_button.isEnabled = false
         email_register_button.isEnabled = false
+        reset_password_button.isEnabled = false
         try {
             mAuth?.createUserWithEmailAndPassword(email, password)
                     ?.addOnCompleteListener {
@@ -173,8 +174,7 @@ class LoginActivity : AppCompatActivity() {
                             toast("Account creation succesful")
                             startMain(email)
                         } else {
-                            this@LoginActivity.email_sign_in_button.isEnabled = true
-                            this@LoginActivity.email_register_button.isEnabled = true
+                            updateButtons()
                             Log.d(tag, "[createUser]: Failed")
                             toast("Account creation failed. Are you already a registered user?")
                         }
@@ -194,6 +194,7 @@ class LoginActivity : AppCompatActivity() {
         progressBar.visibility = View.VISIBLE
         email_sign_in_button.isEnabled = false
         email_register_button.isEnabled = false
+        reset_password_button.isEnabled = false
         try {
             mAuth?.signInWithEmailAndPassword(email, password)
                     ?.addOnCompleteListener {
@@ -205,8 +206,7 @@ class LoginActivity : AppCompatActivity() {
                             toast("Sign in successful!")
                             startMain(email)
                         } else {
-                            this@LoginActivity.email_sign_in_button.isEnabled = true
-                            this@LoginActivity.email_register_button.isEnabled = true
+                            updateButtons()
                             Log.d(tag, "[signInUser]: Failed")
                             toast("Sign in failed. Have you entered your details correctly?")
                         }
@@ -225,6 +225,7 @@ class LoginActivity : AppCompatActivity() {
         progressBar.visibility = View.VISIBLE
         email_sign_in_button.isEnabled = false
         email_register_button.isEnabled = false
+        reset_password_button.isEnabled = false
         try {
             mAuth?.sendPasswordResetEmail(email)
                     ?.addOnCompleteListener {

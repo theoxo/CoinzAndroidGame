@@ -15,7 +15,7 @@ import java.net.URL
  *
  * @param[caller] the object implementing [DownloadCompleteListener] to send the results back to.
  */
-class DownloadFileTask(private val caller : DownloadCompleteListener):
+class DownloadFileTask(private val caller: DownloadCompleteListener):
         AsyncTask<String, Void, String>() {
 
     private val tag = "DownloadFileTask"
@@ -26,7 +26,7 @@ class DownloadFileTask(private val caller : DownloadCompleteListener):
      * @param urls one or more urls, the first of which is assumed to be the target.
      * @return a [String] of the data downloaded.
      */
-    override fun doInBackground(vararg urls : String): String = try {
+    override fun doInBackground(vararg urls: String): String = try {
         loadFileFromNetwork(urls[0])
     } catch (ex: IOException) {
         NETWORK_ERROR
@@ -38,7 +38,7 @@ class DownloadFileTask(private val caller : DownloadCompleteListener):
      * @param urlString the URL to download the data from.
      * @return the [String] representation of the downloaded data.
      */
-    private fun loadFileFromNetwork(urlString : String) : String {
+    private fun loadFileFromNetwork(urlString: String) : String {
         val stream : InputStream = downloadUrl(urlString)
 
         return stream.bufferedReader().use { it.readText() }
