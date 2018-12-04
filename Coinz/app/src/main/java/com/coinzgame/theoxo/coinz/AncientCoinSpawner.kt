@@ -497,7 +497,7 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
         var json : JSONObject? = null
 
         val p = ThreadLocalRandom.current().nextDouble(0.0, 1.0)
-        if (p < 0.5) {
+        if (p < ANCIENT_COIN_SPAWN_CHANCE) {
             // Success! The coin shall be spawned.
             // Make its value 5 * the given top value of its currency:
             val value = (topCoinValue * 5).toString()
