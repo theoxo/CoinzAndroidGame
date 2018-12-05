@@ -80,7 +80,13 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
                         + "(the coins in your wallet will be considered spare change if you have "
                         + "deposited 25 coins today).")
                 title = "Hello there... Looks like you're new!"
-                positiveButton("Got it!"){}
+                positiveButton("Got it!"){
+                    // Mark that it is no longer the first time this app is running.
+                    val storedPrefs = getSharedPreferences(PREFERENCES_FILE, Context.MODE_PRIVATE)
+                    val editor = storedPrefs.edit()
+                    editor.putBoolean(FIRST_TIME_RUNNING, false)
+                    editor.apply()
+                }
             }.show()
         }
 

@@ -159,7 +159,7 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
         if (lastDownloadDate != currentDate || cachedMap == null) {
             // The user has not yet downloaded the map for today.
             // Do this in the background so we can spawn today's ancient coins.
-            Log.e(tag, "[onReceive] cachedMap is invalid. Downloading a new one")
+            Log.d(tag, "[onReceive] cachedMap is invalid. Downloading a new one")
             // Begin the background download
             val dateString = "http://homepages.inf.ed.ac.uk/stg/coinz/$currentDate/coinzmap.geojson"
             DownloadFileTask(this).execute(dateString)

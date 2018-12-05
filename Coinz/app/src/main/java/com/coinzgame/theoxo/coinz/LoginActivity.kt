@@ -106,10 +106,6 @@ class LoginActivity : AppCompatActivity() {
             alarmSetupIntent.action = FIRST_RUN_ACTION
             sendBroadcast(alarmSetupIntent)
 
-            // Mark that it is no longer the first time this app is running.
-            val editor = storedPrefs.edit()
-            editor.putBoolean(FIRST_TIME_RUNNING, false)
-            editor.apply()
         } else {
             Log.d(tag, "[onCreate] Not first run of app")
         }
