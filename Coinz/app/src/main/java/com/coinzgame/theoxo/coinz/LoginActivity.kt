@@ -5,6 +5,8 @@ import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 
 import android.content.Intent
+import android.content.IntentFilter
+import android.os.Build
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
@@ -88,6 +90,18 @@ class LoginActivity : AppCompatActivity() {
         firstRun = storedPrefs.getBoolean(FIRST_TIME_RUNNING, true)
         if (firstRun) {
             Log.d(tag, "[onCreate] First time running the app")
+
+            // Since Oreo we need to register the receiver to the context in order
+            // for AncientCoinSpawner to receive our intents
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val ancientCoinSpawnerIntentFilter = IntentFilter()
+                ancientCoinSpawnerIntentFilter.addAction(FIRST_RUN_ACTION)
+                ancientCoinSpawnerIntentFilter.addAction(Intent.ACTION_BOOT_COMPLETED)
+                applicationContext.registerReceiver(AncientCoinSpawner(),
+                        ancientCoinSpawnerIntentFilter)
+            }
+
+            // Set up the event telling AncientCoinSpawner to set up the alarms and broadcast it
             val alarmSetupIntent = Intent()
             alarmSetupIntent.action = FIRST_RUN_ACTION
             sendBroadcast(alarmSetupIntent)

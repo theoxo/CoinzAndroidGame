@@ -41,6 +41,9 @@ class SendAndViewMessageTest {
      * For this test to run as expected two users need to be registered:
      * one with email "mikey@mikeysemail.mikey" and password "mikeymikey111",
      * and one with email "lucy@lucysemail.lucy" and password "lucylucy111".
+     * It also requires a fresh install of the app, so before running the test make sure
+     * the app is not already installed on the device. Running this test inside of a test suite
+     * will therefore not work.
      */
     @Test
     fun sendAndViewMessageTest() {

@@ -38,7 +38,9 @@ class NewMessageAvailableTest {
      * Tests logging in, switching to the [InboxFragment] and checking if the new message button
      * is available.
      * The purpose of this test is really to make sure navigating to and loading the [InboxFragment]
-     * works as expected.
+     * works as expected. It requires a fresh install of the app, so before running the test make sure
+     * the app is not already installed on the device. Running this test inside of a test suite
+     * will therefore not work.
      */
     @Test
     fun newMessageAvailableTest() {
