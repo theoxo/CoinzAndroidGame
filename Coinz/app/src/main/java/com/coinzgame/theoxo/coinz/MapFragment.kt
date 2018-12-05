@@ -2,8 +2,10 @@ package com.coinzgame.theoxo.coinz
 
 import android.content.*
 import android.location.Location
+import android.opengl.Visibility
 import android.os.Bundle
 import android.os.CountDownTimer
+import android.support.annotation.VisibleForTesting
 import android.support.v4.app.Fragment
 import android.util.Log
 import android.view.LayoutInflater
@@ -47,7 +49,8 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
     private val fragTag = "MapFragment"
 
     // Local variables related to the location tracking and displaying
-    private var originLocation: Location? = null
+    @VisibleForTesting (otherwise = VisibleForTesting.PRIVATE)
+    var originLocation: Location? = null
     private lateinit var locationEngine: LocationEngine
     private lateinit var locationLayerPlugin: LocationLayerPlugin
 
@@ -608,11 +611,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
                 marker.title == BANK_MARKER_TITLE -> {
                     if (distance <= 25.0) {
                         // The user is close enough to interact with the bank.
-                        // Start the BankActivity, passing the needed information
-                        val intent = Intent(mainActivity, BankActivity::class.java)
-                        intent.putExtra(USER_EMAIL, mainActivity?.currentUserEmail)
-                        intent.putExtra(EXCHANGE_RATES, rates.toString())
-                        startActivity(intent)
+                        startBank()
                     } else {
                         mainActivity?.toast("You're too far away from the bank")
                     }
@@ -643,6 +642,14 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
         }
     }
 
+    @VisibleForTesting (otherwise = VisibleForTesting.PRIVATE)
+    fun startBank() {
+        // Start the BankActivity, passing the needed information
+        val intent = Intent(mainActivity, BankActivity::class.java)
+        intent.putExtra(USER_EMAIL, mainActivity?.currentUserEmail)
+        intent.putExtra(EXCHANGE_RATES, rates.toString())
+        startActivity(intent)
+    }
     /**
      * Gets a singleton [CountDownTimer] instance with the desired duration and behaviour.
      * Also updates the fields which keep track of the combo currently active appropriately.

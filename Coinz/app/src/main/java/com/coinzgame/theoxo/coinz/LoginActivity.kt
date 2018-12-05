@@ -115,7 +115,7 @@ class LoginActivity : AppCompatActivity() {
         val currentUser = mAuth?.currentUser
         if (currentUser != null) {
             Log.d(tag, "User already logged in, moving on to main")
-            val email : String? = currentUser.email
+            val email: String? = currentUser.email
             if (email == null) {
                 Log.e(tag, "[onCreate] User is already logged in but email is null")
             } else {
