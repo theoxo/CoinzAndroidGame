@@ -155,11 +155,15 @@ class LoginActivity : AppCompatActivity() {
 
             else -> {
                 // Do not allow anything.
-                reset_password_button.isEnabled = false
-                email_sign_in_button.isEnabled = false
-                email_register_button.isEnabled = false
+                disableAllButtons()
             }
         }
+    }
+
+    private fun disableAllButtons() {
+        reset_password_button?.isEnabled = false
+        email_sign_in_button?.isEnabled = false
+        email_register_button?.isEnabled = false
     }
 
     /**
@@ -170,14 +174,12 @@ class LoginActivity : AppCompatActivity() {
      */
     private fun createUser(email: String, password: String) {
         progressBar.visibility = View.VISIBLE
-        email_sign_in_button.isEnabled = false
-        email_register_button.isEnabled = false
-        reset_password_button.isEnabled = false
+        disableAllButtons()
         try {
             mAuth?.createUserWithEmailAndPassword(email, password)
                     ?.addOnCompleteListener {
                         // Whatever the result is, hide the progress bar upon completion
-                        this@LoginActivity.progressBar.visibility = View.GONE
+                        progressBar.visibility = View.GONE
 
                         if (it.isSuccessful) {
                             Log.d(tag, "[createUser]: Succesful")
@@ -202,14 +204,12 @@ class LoginActivity : AppCompatActivity() {
      */
     private fun signInUser(email : String, password : String) {
         progressBar.visibility = View.VISIBLE
-        email_sign_in_button.isEnabled = false
-        email_register_button.isEnabled = false
-        reset_password_button.isEnabled = false
+        disableAllButtons()
         try {
             mAuth?.signInWithEmailAndPassword(email, password)
                     ?.addOnCompleteListener {
                         // Whatever the result is, hide the progress bar upon completion
-                        this@LoginActivity.progressBar.visibility = View.GONE
+                        progressBar.visibility = View.GONE
 
                         if (it.isSuccessful) {
                             Log.d(tag, "[signInUser]: Successful")
@@ -233,15 +233,13 @@ class LoginActivity : AppCompatActivity() {
      */
     private fun resetPassword(email: String) {
         progressBar.visibility = View.VISIBLE
-        email_sign_in_button.isEnabled = false
-        email_register_button.isEnabled = false
-        reset_password_button.isEnabled = false
+        disableAllButtons()
         try {
             mAuth?.sendPasswordResetEmail(email)
                     ?.addOnCompleteListener {
                         // Whatever the result is, hide the progress bar upon completion
                         // and re-enable the appropriate buttons
-                        this@LoginActivity.progressBar.visibility = View.GONE
+                        progressBar.visibility = View.GONE
                         updateButtons()
 
                         if (it.isSuccessful) {

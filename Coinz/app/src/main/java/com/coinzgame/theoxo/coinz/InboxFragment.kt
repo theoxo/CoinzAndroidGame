@@ -88,7 +88,7 @@ class InboxFragment : Fragment() {
         Log.d(fragTag, "[updateListView] Invoked")
 
         // Set a progress bar to be visible so the user knows we are waiting for an async task
-        inboxProgressBar.visibility = View.VISIBLE
+        inboxProgressBar?.visibility = View.VISIBLE
 
         // Get a snapshot of the user's current inbox state
         mainActivity?.firestoreInbox?.get()?.run {
@@ -120,17 +120,17 @@ class InboxFragment : Fragment() {
                         // first.
                         items.sortByDescending { message -> message.timestamp }
                         val messagesAdapter = MessageAdapter(context, items)
-                        inboxListView.adapter = messagesAdapter
+                        inboxListView?.adapter = messagesAdapter
                     }
                 }
 
                 // Hide the progress bar as we've finished.
-                inboxProgressBar.visibility = View.GONE
+                inboxProgressBar?.visibility = View.GONE
             }
 
             addOnFailureListener { e ->
                 // Hide the progress bar and let the user know we failed, logging the exception
-                inboxProgressBar.visibility = View.GONE
+                inboxProgressBar?.visibility = View.GONE
                 Log.e(fragTag, "[updateListView] Inbox get failed: $e")
                 mainActivity?.toast("Could not fetch your inbox")
             }

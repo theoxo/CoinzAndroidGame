@@ -201,9 +201,9 @@ class MessageCreationActivity : AppCompatActivity() {
                 if (querySnapshot.isEmpty) {
                     // Collection does not exist, i.e. the user is not registered in the system
                     Log.w(tag, "[sendMessage] The target user  $targetEmail is not registered")
-                    this@MessageCreationActivity.toast("Could not find user $targetEmail")
-                    this@MessageCreationActivity.messageSentProgressBar.visibility = View.GONE
-                    this@MessageCreationActivity.sendButton.isEnabled = true
+                    toast("Could not find user $targetEmail")
+                    messageSentProgressBar?.visibility = View.GONE
+                    sendButton?.isEnabled = true
                 } else {
                     var mailBoxExists = false
                     for (docSnapshot in querySnapshot.documents) {
@@ -213,16 +213,16 @@ class MessageCreationActivity : AppCompatActivity() {
                             // The target user has an existant inbox. Add this mail to it
                             targetInbox.update(messageMap).run {
                                 addOnSuccessListener {
-                                    this@MessageCreationActivity.messageSentProgressBar.visibility = View.GONE
-                                    this@MessageCreationActivity.sendButton.isEnabled = true
+                                    messageSentProgressBar?.visibility = View.GONE
+                                    sendButton?.isEnabled = true
                                     Log.d(tag, "[sendMessage] Added mail to existent mailbox")
                                     toast("Mail sent")
                                     deleteSentCoinsFromUsersWallet(sentCoinsDeletionMap)
                                 }
 
                                 addOnFailureListener { e ->
-                                    this@MessageCreationActivity.messageSentProgressBar.visibility = View.GONE
-                                    this@MessageCreationActivity.sendButton.isEnabled = true
+                                    messageSentProgressBar?.visibility = View.GONE
+                                    sendButton?.isEnabled = true
                                     Log.e(tag, "[sendMessage] Failed at adding mail to existent "
                                             + "mailbox: $e")
                                 }
@@ -241,16 +241,16 @@ class MessageCreationActivity : AppCompatActivity() {
                         // Target mailbox doesn't exist. Make it!
                         targetInbox.set(messageMap).run {
                             addOnSuccessListener {
-                                this@MessageCreationActivity.messageSentProgressBar.visibility = View.GONE
-                                this@MessageCreationActivity.sendButton.isEnabled = true
+                                messageSentProgressBar?.visibility = View.GONE
+                                sendButton?.isEnabled = true
                                 Log.d(tag, "[sendMessage] Added mail to new mailbox")
                                 toast("Mail sent")
                                 deleteSentCoinsFromUsersWallet(sentCoinsDeletionMap)
                             }
 
                             addOnFailureListener { e ->
-                                this@MessageCreationActivity.messageSentProgressBar.visibility = View.GONE
-                                this@MessageCreationActivity.sendButton.isEnabled = true
+                                messageSentProgressBar?.visibility = View.GONE
+                                sendButton?.isEnabled = true
                                 Log.e(tag, "[sendMessage] Failed at adding mail to new "
                                         + "mailbox: $e")
                             }
@@ -260,8 +260,8 @@ class MessageCreationActivity : AppCompatActivity() {
             }
 
             addOnFailureListener { e ->
-                this@MessageCreationActivity.messageSentProgressBar.visibility = View.GONE
-                this@MessageCreationActivity.sendButton.isEnabled = true
+                messageSentProgressBar?.visibility = View.GONE
+                sendButton?.isEnabled = true
                 Log.e(tag, "[sendMessage] Target user's collection get failed: $e")
             }
         }
@@ -311,8 +311,8 @@ class MessageCreationActivity : AppCompatActivity() {
                     // Allow the user to send away coins
                     updateListView()
                 } else {
-                    coinListProgressBar.visibility = View.GONE
-                    notElligbleText.visibility = View.VISIBLE
+                    coinListProgressBar?.visibility = View.GONE
+                    notElligbleText?.visibility = View.VISIBLE
                 }
 
             }
@@ -331,7 +331,7 @@ class MessageCreationActivity : AppCompatActivity() {
 
         firestoreWallet?.get()?.run {
             addOnSuccessListener { docSnapshot ->
-                this@MessageCreationActivity.coinListProgressBar.visibility = View.GONE
+                coinListProgressBar?.visibility = View.GONE
                 val walletSnapshot = docSnapshot.data?.toSortedMap()
                 if (walletSnapshot == null) {
                     Log.w(tag, "[updateListView] walletSnapshot is null")
@@ -383,14 +383,14 @@ class MessageCreationActivity : AppCompatActivity() {
 
                     val coinsAdapter = CoinAdapter(this@MessageCreationActivity, items,
                                             true)
-                    coinsListView.choiceMode = AbsListView.CHOICE_MODE_MULTIPLE
-                    coinsListView.adapter = coinsAdapter
+                    coinsListView?.choiceMode = AbsListView.CHOICE_MODE_MULTIPLE
+                    coinsListView?.adapter = coinsAdapter
                 }
             }
 
             addOnFailureListener { e ->
                 Log.e(tag, "[updateListView] Wallet get failed: $e")
-                this@MessageCreationActivity.coinListProgressBar.visibility = View.GONE
+                coinListProgressBar?.visibility = View.GONE
             }
         }
     }

@@ -3,6 +3,7 @@ package com.coinzgame.theoxo.coinz
 import android.content.*
 import android.os.Bundle
 import android.support.design.widget.BottomNavigationView
+import android.support.v4.app.Fragment
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.view.MenuItem
@@ -222,8 +223,8 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
     override fun onNavigationItemSelected(item : MenuItem): Boolean {
         Log.d(tag, "[onNavigationItemSelected] Clicked")
         when (item.itemId) {
-            R.id.account_nav -> startAccountFragment()
-            R.id.messaging_nav -> startInboxFragment()
+            R.id.account_nav -> startFragment(accountFragment)
+            R.id.messaging_nav -> startFragment(inboxFragment)
             else -> {
                 // Must check if we have permission to track the user's location before
                 // setting up the MapFragment
@@ -236,42 +237,18 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
     }
 
     /**
-     * Replaces any currently active fragment with [AccountFragment].
+     * Replaces the currently active fragment, if there is any to replace.
+     *
+     * @param fragment the Fragment to replace the currently active one with.
      */
-    private fun startAccountFragment() {
-        Log.d(tag, "[startAccountFragment] Invoked")
+    private fun startFragment(fragment: Fragment) {
+        Log.d(tag, "[startFragment] Invoked")
         val fManager = supportFragmentManager
         val fTransaction = fManager.beginTransaction()
-        fTransaction.replace(R.id.fragmentContainer, accountFragment)
+        fTransaction.replace(R.id.fragmentContainer, fragment)
         fTransaction.addToBackStack(null)
         fTransaction.commit()
-        Log.d(tag, "Committed transaction to AccountFragment")
-    }
-
-    /**
-     * Replaces any currently active fragment with [InboxFragment].
-     */
-    private fun startInboxFragment() {
-        Log.d(tag, "[startInboxFragment] Invoked")
-        val fManager = supportFragmentManager
-        val fTransaction = fManager.beginTransaction()
-        fTransaction.replace(R.id.fragmentContainer, inboxFragment)
-        fTransaction.addToBackStack(null)
-        fTransaction.commit()
-        Log.d(tag, "Committed transaction to InboxFragment")
-    }
-
-    /**
-     * Replaces any currently active fragment with [MapFragment].
-     */
-    private fun startMapFragment() {
-        Log.d(tag, "[startMapFragment] Invoked")
-        val fManager = supportFragmentManager
-        val fTransaction = fManager.beginTransaction()
-        fTransaction.replace(R.id.fragmentContainer, mapFragment)
-        fTransaction.addToBackStack(null)
-        fTransaction.commit()
-        Log.d(tag, "Committed transaction to MapFragment")
+        Log.d(tag, "[startFragment] Committed transaction to fragment")
     }
 
 
@@ -285,7 +262,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
             Log.d(tag, "[enableLocation] Permissions granted")
             // We have the necessary permissions to track the user location and can safely
             // set up a MapFragment
-            startMapFragment()
+            startFragment(mapFragment)
         } else {
             Log.d(tag, "[enableLocation] Permissions not granted")
             // The permissions have not been granted. Before doing anything else, request them
@@ -319,7 +296,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
      */
     override fun onPermissionResult(granted: Boolean) {
         if (granted) {
-          startMapFragment()
+            startFragment(mapFragment)
         } else {
             Log.w(tag, "[onPermissionResult] Permissions not granted")
         }

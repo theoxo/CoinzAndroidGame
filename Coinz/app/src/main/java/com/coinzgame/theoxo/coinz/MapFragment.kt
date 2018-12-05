@@ -505,9 +505,9 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
                 // Start the combo timer we've set up
                 comboTimer = localComboTimer
                 comboTimer?.start()
-                comboFactorText.text = "${String.format("%.1f", (localComboFactor-1)*100)}%"
+                comboFactorText?.text = "${String.format("%.1f", (localComboFactor-1)*100)}%"
                 comboFactor = localComboFactor
-                comboTimerText.text = "$localComboTimeRemaining"
+                comboTimerText?.text = "$localComboTimeRemaining"
             }
         }
     }
@@ -547,7 +547,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
                             Log.d(fragTag,
                                     "[updateWallet] Found wallet, added coin $coinId of " +
                                             "currency $currency with value $value")
-                            snackbarLayout.snackbar("Collected $roundedValue $currency")
+                            snackbarLayout?.snackbar("Collected $roundedValue $currency")
                         }
                         addOnFailureListener { e ->
                             Log.e(fragTag, "[updateWallet] Doc exists but update failed: $e")
@@ -560,7 +560,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
                         addOnSuccessListener {
                             Log.d(fragTag,"[updateWallet] Created wallet, added coin " +
                                     "$coinId of currency $currency with value $value")
-                            snackbarLayout.snackbar("Collected $roundedValue $currency")
+                            snackbarLayout?.snackbar("Collected $roundedValue $currency")
                         }
                         addOnFailureListener { e ->
                             Log.e(fragTag, "[updateWallet] Failed to create doc: $e")

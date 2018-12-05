@@ -452,8 +452,8 @@ class BankActivity : AppCompatActivity() {
             // If both credit update and wallet update succeeded, enable further
             // depositing redo the list view
             pullFromDatabase()
-            depositButton.isEnabled = true
-            bankProgressBar.visibility = View.GONE
+            depositButton?.isEnabled = true
+            bankProgressBar?.visibility = View.GONE
         }
     }
 }
