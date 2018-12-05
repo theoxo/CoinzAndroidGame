@@ -63,7 +63,8 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
     private lateinit var markerIdToCoin: MutableMap<Long, Coin>
 
     // Today's rates
-    private var rates: JSONObject? = null
+    @VisibleForTesting (otherwise = VisibleForTesting.PRIVATE)
+    var rates: JSONObject? = null
 
     // Combo bonus feature objects
     private var comboTimer: CountDownTimer? = null

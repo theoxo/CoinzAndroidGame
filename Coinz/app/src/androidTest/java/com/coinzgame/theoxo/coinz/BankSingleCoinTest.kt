@@ -28,6 +28,7 @@ import android.support.test.InstrumentationRegistry.getInstrumentation
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
+import org.json.JSONObject
 import org.junit.Before
 
 @LargeTest
@@ -135,6 +136,10 @@ class BankSingleCoinTest {
         bankLocation.latitude = BANK_MARKER_LATITUDE
         bankLocation.longitude = BANK_MARKER_LONGITUDE
         mapFragment?.originLocation = bankLocation
+        mapFragment?.rates = JSONObject("{\"SHIL\": 51.28148957923587, "
+                + "\"DOLR\": 32.271807953909644, "
+                + "\"QUID\": 47.650279691530336, "
+                + "\"PENY\": 17.15222932298055}")
         mapFragment?.startBank()
 
         // Added a sleep statement to match the app's execution delay.
