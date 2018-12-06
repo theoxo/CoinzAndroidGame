@@ -107,15 +107,16 @@ class BankActivity : AppCompatActivity() {
      * Switches to deposit mode, hiding irrelevant elements and showing new ones.
      */
     private fun switchToDepositMode() {
-        chooseWalletButton.visibility = View.GONE
-        chooseInboxButton.visibility = View.GONE
-        coinsListView.visibility = View.VISIBLE
-        depositButton.visibility = View.VISIBLE
-        lowerTextView.text = ("Today's rates are:\n"
+        chooseWalletButton?.visibility = View.GONE
+        chooseInboxButton?.visibility = View.GONE
+        coinsListView?.visibility = View.VISIBLE
+        depositButton?.visibility = View.VISIBLE
+        lowerTextView?.text = ("Today's rates are:\n"
                 + "\t* DOLR to Gold: ${rates?.get("DOLR")}\n"
                 + "\t* PENY to Gold: ${rates?.get("PENY")}\n"
                 + "\t* QUID to Gold: ${rates?.get("QUID")}\n"
                 + "\t* SHIL to Gold: ${rates?.get("SHIL")}\n")
+        upperTextView?.text = "Loading your bank data…"
         pullFromDatabase()
     }
 
@@ -204,8 +205,8 @@ class BankActivity : AppCompatActivity() {
                     items.sortByDescending { coin -> coin.value }
 
                     val coinsAdapter = CoinAdapter(this@BankActivity, items, true)
-                    coinsListView.choiceMode = CHOICE_MODE_MULTIPLE
-                    coinsListView.adapter = coinsAdapter
+                    coinsListView?.choiceMode = CHOICE_MODE_MULTIPLE
+                    coinsListView?.adapter = coinsAdapter
                 }
             }
 
@@ -243,12 +244,13 @@ class BankActivity : AppCompatActivity() {
 
 
                 // Update the text displayed to the user appropriately
-                upperTextView.text = "Collected coins deposited today: $coinsDepositedToday." +
+                upperTextView?.text = "Collected coins deposited today: $coinsDepositedToday." +
                         "\nCurrent bank credit: ${String.format("%.2f", goldInBank)} GOLD."
             }
 
             addOnFailureListener { e ->
                 Log.e(tag, "[pullFromDataBase] Bank get failed: $e")
+                upperTextView?.text = "Could not find your bank account."
             }
         }
     }

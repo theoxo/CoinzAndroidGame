@@ -49,8 +49,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
     private val fragTag = "MapFragment"
 
     // Local variables related to the location tracking and displaying
-    @VisibleForTesting (otherwise = VisibleForTesting.PRIVATE)
-    var originLocation: Location? = null
+    private var originLocation: Location? = null
     private lateinit var locationEngine: LocationEngine
     private lateinit var locationLayerPlugin: LocationLayerPlugin
 

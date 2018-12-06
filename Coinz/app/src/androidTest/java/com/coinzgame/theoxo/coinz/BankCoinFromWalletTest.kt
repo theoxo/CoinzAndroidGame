@@ -1,7 +1,6 @@
 package com.coinzgame.theoxo.coinz
 
 
-import android.location.Location
 import android.support.test.espresso.Espresso.onData
 import android.support.test.espresso.Espresso.onView
 import android.support.test.espresso.action.ViewActions.*
@@ -11,7 +10,6 @@ import android.support.test.filters.LargeTest
 import android.support.test.rule.ActivityTestRule
 import android.support.test.rule.GrantPermissionRule
 import android.support.test.runner.AndroidJUnit4
-import android.support.test.runner.lifecycle.ActivityLifecycleMonitor
 import android.support.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import android.support.test.runner.lifecycle.Stage
 import android.view.View
@@ -20,7 +18,6 @@ import org.hamcrest.Description
 import org.hamcrest.Matcher
 import org.hamcrest.Matchers.*
 import org.hamcrest.TypeSafeMatcher
-import org.hamcrest.core.IsInstanceOf
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -33,7 +30,7 @@ import org.junit.Before
 
 @LargeTest
 @RunWith(AndroidJUnit4::class)
-class BankSingleCoinTest {
+class BankCoinFromWalletTest {
 
     @Rule
     @JvmField
@@ -45,6 +42,13 @@ class BankSingleCoinTest {
             GrantPermissionRule.grant(
                     "android.permission.ACCESS_FINE_LOCATION")
 
+    /**
+     * Set up the database entry for the test user before running the test so that it is repeatable.
+     * Specifically this sets the user to have a "fresh" bank account and 25 valid coins in
+     * their wallet.
+     * This requires that a user with email "testcoincollector@test.test" and
+     * password "testtest111" is registered in the authentication service.
+     */
     @Before
     fun setUpDatabase() {
       val auth = FirebaseAuth.getInstance()
@@ -77,11 +81,24 @@ class BankSingleCoinTest {
           }
       }
 
-        auth.signOut()
+      auth.signOut()
+
     }
 
+    /**
+     * This tests logging in, starting the bank, and depositing a coin from the wallet.
+     * Checks that the bank credit and counter is updated appropriately and that the coin is
+     * removed from the ListView. Then restarts the BankActivity and makes sure the coin is still
+     * not in the ListView.
+     * This requires that a user with email "testcoincollector@test.test" and
+     * password "testtest111" is registered in the authentication service.
+     * It also requires a fresh install of the app, so before running the test make sure
+     * the app is not already installed on the device. Running this test inside of a test suite
+     * will therefore not work.
+     */
     @Test
     fun bankSingleCoinTest() {
+
         // Added a sleep statement to match the app's execution delay.
         // The recommended way to handle such scenarios is to use Espresso idling resources:
         // https://google.github.io/android-testing-support-library/docs/espresso/idling-resource/index.html
@@ -132,10 +149,6 @@ class BankSingleCoinTest {
         val mapFragment: MapFragment? = currentMainActivity?.supportFragmentManager
                 ?.findFragmentById(R.id.fragmentContainer) as MapFragment
 
-        val bankLocation = Location("")
-        bankLocation.latitude = BANK_MARKER_LATITUDE
-        bankLocation.longitude = BANK_MARKER_LONGITUDE
-        mapFragment?.originLocation = bankLocation
         mapFragment?.rates = JSONObject("{\"SHIL\": 51.28148957923587, "
                 + "\"DOLR\": 32.271807953909644, "
                 + "\"QUID\": 47.650279691530336, "
@@ -157,6 +170,8 @@ class BankSingleCoinTest {
                                 1),
                         isDisplayed()))
         appCompatButton3.perform(click())
+
+        Thread.sleep(7000)
 
         val appCompatCheckedTextView = onData(anything())
                 .inAdapterView(allOf(withId(R.id.coinsListView),
@@ -193,6 +208,43 @@ class BankSingleCoinTest {
                                 0),
                         isDisplayed()))
         checkedTextView.check(matches(isDisplayed()))
+
+        pressBack()
+
+        // Added a sleep statement to match the app's execution delay.
+        // The recommended way to handle such scenarios is to use Espresso idling resources:
+        // https://google.github.io/android-testing-support-library/docs/espresso/idling-resource/index.html
+        Thread.sleep(7000)
+
+        mapFragment?.startBank()
+
+        // Added a sleep statement to match the app's execution delay.
+        // The recommended way to handle such scenarios is to use Espresso idling resources:
+        // https://google.github.io/android-testing-support-library/docs/espresso/idling-resource/index.html
+        Thread.sleep(7000)
+
+        val appCompatButton5 = onView(
+                allOf(withId(R.id.chooseWalletButton), withText("My Wallet"),
+                        isDisplayed()))
+        appCompatButton5.perform(click())
+
+        // Added a sleep statement to match the app's execution delay.
+        // The recommended way to handle such scenarios is to use Espresso idling resources:
+        // https://google.github.io/android-testing-support-library/docs/espresso/idling-resource/index.html
+        Thread.sleep(7000)
+
+        val textView1 = onView(
+                allOf(withId(R.id.upperTextView),
+                        isDisplayed()))
+        textView1.check(matches(withText("Collected coins deposited today: 1.\nCurrent bank credit: 0.75 GOLD.")))
+
+        val checkedTextView1 = onView(
+                allOf(withId(R.id.checkedListItemText),
+                        childAtPosition(
+                                allOf(withId(R.id.coinsListView)),
+                                0),
+                        isDisplayed()))
+        checkedTextView1.check(matches(isDisplayed()))
     }
 
     private fun childAtPosition(

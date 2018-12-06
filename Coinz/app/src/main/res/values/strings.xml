@@ -34,7 +34,7 @@
 
     <!-- Strings related to the BankActivity -->
     <string name="bankText">
-        Loading your bank data…
+        Hello and welcome to the bank!
     </string>
     <string name="bank_logo_description">
         The bank logo.

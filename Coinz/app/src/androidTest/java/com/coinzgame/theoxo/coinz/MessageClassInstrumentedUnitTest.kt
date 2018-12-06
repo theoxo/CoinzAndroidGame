@@ -10,6 +10,10 @@ import org.junit.Before
 import org.junit.runner.RunWith
 import java.util.concurrent.ThreadLocalRandom
 
+/**
+ * Tests whether the [Message] class functions as expected.
+ * This unit test needs to be run as an instrumented test since it relies on [JSONObject].
+ */
 @SmallTest
 @RunWith(AndroidJUnit4::class)
 class MessageClassInstrumentedUnitTest {
@@ -22,9 +26,11 @@ class MessageClassInstrumentedUnitTest {
     private val attachedCoins = ArrayList<Coin>()
     private val attachedCoinJSONs = ArrayList<JSONObject>()
 
+    /**
+     * Set up an example [Message] and the fields to compare it to.
+     */
     @Before
     fun setUpMessage() {
-        val attachedCoinJsons = ArrayList<JSONObject>()
         // Add 0 to 10 coins to attach to the message
         for (i in 0 until ThreadLocalRandom.current().nextInt(0, 11)) {
             val coinCurrency = "testCurrency$i"
@@ -46,26 +52,43 @@ class MessageClassInstrumentedUnitTest {
 
     }
 
+    /**
+     * Check that the message's timestamp is as expected.
+     */
     @Test
     fun timestampIsCorrect() {
         assertEquals(timestamp, message?.timestamp)
     }
 
+    /**
+     * Test that the sender email saved in the message is as expected.
+     */
     @Test
     fun senderIsCorrect() {
         assertEquals(senderEmail, message?.senderEmail)
     }
 
+    /**
+     * Check that the message's main text body is as expected.
+     */
     @Test
     fun textIsCorrect() {
         assertEquals(messageText, message?.messageText)
     }
 
+    /**
+     * Check that the coins attached to the message equal to the ones we passed to it.
+     */
     @Test
     fun coinsAreCorrect() {
         assertEquals(attachedCoins, message?.attachedCoins)
     }
 
+    /**
+     * Check that the JSONObject -> Message -> JSONObject process is invertible (i.e. the
+     * first and last JSONObjects are equivalent). This tests [Message.toJSONString] in
+     * unison with the constructor.
+     */
     @Test
     fun toJSONStringIsCorrect() {
         assertEquals(messageJSON.toString(), JSONObject(message?.toJSONString()).toString())
