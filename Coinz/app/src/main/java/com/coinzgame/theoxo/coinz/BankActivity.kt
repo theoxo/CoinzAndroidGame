@@ -304,7 +304,7 @@ class BankActivity : AppCompatActivity() {
                     else -> {
                         depositAmount += value / exchangeRate // TODO is this the correct interpretation of exchangerate
                         if (sourceModeIsWallet) {
-                            sourceUpdate["$currency|$id"] = COIN_DEPOSITED
+                            sourceUpdate["`$currency|$id`"] = COIN_DEPOSITED
                         } else {
                             // Otherwise it is the inbox whose contents we want to update
                             val message = coinToMessage?.get(coin)
