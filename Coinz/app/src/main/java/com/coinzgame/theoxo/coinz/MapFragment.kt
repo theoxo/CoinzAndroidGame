@@ -59,7 +59,8 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
     private val bankLocation: LatLng = LatLng(BANK_MARKER_LATITUDE, BANK_MARKER_LONGITUDE)
 
     // Keep track of data related to the coins
-    private lateinit var markerIdToCoin: MutableMap<Long, Coin>
+    @VisibleForTesting (otherwise = VisibleForTesting.PRIVATE)
+    lateinit var markerIdToCoin: MutableMap<Long, Coin>
 
     // Today's rates
     @VisibleForTesting (otherwise = VisibleForTesting.PRIVATE)
@@ -78,8 +79,8 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
         mainActivity = context as? MainActivity
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
-                              savedInstanceState: Bundle?): View? {
+    override fun onCreateView(
+            inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         Log.d(fragTag, "Fragment created")
         return inflater.inflate(R.layout.fragment_map, container, false)
 
@@ -265,10 +266,10 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
                                         mapboxMap?.addMarker(
                                                 MarkerOptions()
                                                         .title("~${value
-                                                                .substringBefore('.')}" +
-                                                                " $currency.")
-                                                        .snippet("Currency: $currency." +
-                                                                "\nValue: $roundedValueString.")
+                                                                .substringBefore('.')}"
+                                                                + " $currency.")
+                                                        .snippet("Currency: $currency."
+                                                                + "\nValue: $roundedValueString.")
                                                         .position(LatLng(lat, long))
                                                         .icon(icon))
                                     } else {
@@ -339,8 +340,8 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
             if (localCachedMap == null) {
                 // Will need to download the map first before adding the markers.
                 Log.d(fragTag, "[onMapReady] Downloading coins location map")
-                val dateString = "http://homepages.inf.ed.ac.uk/stg/coinz/" +
-                        "${mainActivity?.currentDate}/coinzmap.geojson"
+                val dateString = ("http://homepages.inf.ed.ac.uk/stg/coinz/"
+                        + "${mainActivity?.currentDate}/coinzmap.geojson")
                 Log.d(fragTag, "Fragment downloading from $dateString" )
                 DownloadFileTask(this).execute(dateString)
             } else {
@@ -439,7 +440,8 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
      *
      * @param marker the marker which corresponds to the coin
      */
-    private fun collectCoinFromMarker(marker: Marker) {
+    @VisibleForTesting (otherwise = VisibleForTesting.PRIVATE)
+    fun collectCoinFromMarker(marker: Marker) {
 
         // Copy the current combo for thread-safety
         var localComboTimer = comboTimer
@@ -454,12 +456,12 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
             localComboTimer = getComboTimerInstance(localComboTimeRemaining)
         } else {
             if (localComboTimeRemaining == null) {
-                Log.e(fragTag, "[collectCoinFromMarker] Combo timer is non-null but" +
-                        "remaining time is")
+                Log.e(fragTag, "[collectCoinFromMarker] Combo timer is non-null but"
+                        + "remaining time is")
             } else {
-                Log.d(fragTag, "[collectCoinFromMarker] Combo found with comboTimer " +
-                        "$localComboTimer, time remaining $localComboTimeRemaining and factor " +
-                        "$localComboFactor")
+                Log.d(fragTag, "[collectCoinFromMarker] Combo found with comboTimer "
+                        + "$localComboTimer, time remaining $localComboTimeRemaining and factor "
+                        + "$localComboFactor")
                 // There's a combo active -- extend it!
                 localComboTimer.cancel()
                 localComboTimeRemaining += 20000

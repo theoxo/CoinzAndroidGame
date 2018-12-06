@@ -112,10 +112,10 @@ class BankActivity : AppCompatActivity() {
         coinsListView?.visibility = View.VISIBLE
         depositButton?.visibility = View.VISIBLE
         lowerTextView?.text = ("Today's rates are:\n"
-                + "\t* DOLR to Gold: ${rates?.get("DOLR")}\n"
-                + "\t* PENY to Gold: ${rates?.get("PENY")}\n"
-                + "\t* QUID to Gold: ${rates?.get("QUID")}\n"
-                + "\t* SHIL to Gold: ${rates?.get("SHIL")}\n")
+                + "• DOLR to Gold: ${String.format("%.2f", rates?.get("DOLR"))}\n"
+                + "• PENY to Gold: ${String.format("%.2f", rates?.get("PENY"))}\n"
+                + "• QUID to Gold: ${String.format("%.2f", rates?.get("QUID"))}\n"
+                + "• SHIL to Gold: ${String.format("%.2f", rates?.get("SHIL"))}")
         upperTextView?.text = "Loading your bank data…"
         pullFromDatabase()
     }
@@ -125,7 +125,7 @@ class BankActivity : AppCompatActivity() {
      */
     private fun pullFromDatabase() {
         val sourceChoiceIsWallet = choiceIsWallet
-        val coinSource : DocumentReference? = when (sourceChoiceIsWallet) {
+        val coinSource: DocumentReference? = when (sourceChoiceIsWallet) {
             true -> firestoreWallet
             else -> firestoreInbox
         }
@@ -156,22 +156,22 @@ class BankActivity : AppCompatActivity() {
                                 val id: String? = try {
                                     coinJson.getString(ID)
                                 } catch (e: JSONException) {
-                                    Log.e(tag, "[pullFromDatabase] Encountered exception $e when "
-                                            + "getting ID from coin.")
+                                    Log.e(tag, "[pullFromDatabase] Encountered exception $e "
+                                            + "when getting ID from coin.")
                                     null
                                 }
                                 val currency: String? = try {
                                     coinJson.getString(CURRENCY)
                                 } catch (e: JSONException) {
-                                    Log.e(tag, "[pullFromDatabase] Encountered exception $e when "
-                                            + "getting currency from coin.")
+                                    Log.e(tag, "[pullFromDatabase] Encountered exception $e "
+                                            + "when getting currency from coin.")
                                     null
                                 }
                                 val coinValue: Double? = try {
                                     coinJson.getDouble(VALUE)
                                 } catch (e: JSONException) {
-                                    Log.e(tag, "[pullFromDatabase] Encountered exception $e when "
-                                            + "getting coinValue from coin.")
+                                    Log.e(tag, "[pullFromDatabase] Encountered exception $e "
+                                            + "when getting coinValue from coin.")
                                     null
                                 }
 
@@ -204,7 +204,8 @@ class BankActivity : AppCompatActivity() {
                     // Sort coins descendently by value
                     items.sortByDescending { coin -> coin.value }
 
-                    val coinsAdapter = CoinAdapter(this@BankActivity, items, true)
+                    val coinsAdapter = CoinAdapter(
+                            this@BankActivity, items, true)
                     coinsListView?.choiceMode = CHOICE_MODE_MULTIPLE
                     coinsListView?.adapter = coinsAdapter
                 }
@@ -230,8 +231,8 @@ class BankActivity : AppCompatActivity() {
 
                 val todaysDateCp = todaysDate // copy field for thread safety
                 if (todaysDateCp == null) {
-                    Log.e(tag, "[pullFromDatabase] todaysDateCp is null, cannot get number " +
-                            "of coins deposited already.")
+                    Log.e(tag, "[pullFromDatabase] todaysDateCp is null, cannot get number "
+                            + "of coins deposited already.")
                 } else {
                     var depositedToday = docSnapshot.get(todaysDateCp) as? Long
                     if (depositedToday == null) {
@@ -244,8 +245,8 @@ class BankActivity : AppCompatActivity() {
 
 
                 // Update the text displayed to the user appropriately
-                upperTextView?.text = "Collected coins deposited today: $coinsDepositedToday." +
-                        "\nCurrent bank credit: ${String.format("%.2f", goldInBank)} GOLD."
+                upperTextView?.text = ("Coins deposited from wallet today: $coinsDepositedToday."
+                        + "\nCurrent bank credit: ${String.format("%.2f", goldInBank)} GOLD.")
             }
 
             addOnFailureListener { e ->
@@ -288,7 +289,8 @@ class BankActivity : AppCompatActivity() {
 
                 when {
                     coin == null -> {
-                        Log.e(tag, "[depositSelectedCoins] Could not cast item at pos $i to coin")
+                        Log.e(tag, "[depositSelectedCoins] Could not cast item at pos $i to "
+                                + "coin")
                     }
                     currency == null -> {
                         Log.e(tag, "[depositSelectedCoins] Coin at $i has null currency")
@@ -304,7 +306,7 @@ class BankActivity : AppCompatActivity() {
                                          + "$currency is null")
                     }
                     else -> {
-                        depositAmount += value / exchangeRate // TODO is this the correct interpretation of exchangerate
+                        depositAmount += value * exchangeRate
                         if (sourceModeIsWallet) {
                             sourceUpdate["`$currency|$id`"] = COIN_DEPOSITED
                         } else {
@@ -330,13 +332,14 @@ class BankActivity : AppCompatActivity() {
                 && sourceUpdate.size > (25 - previouslyDepositedAmount)
                 && sourceModeIsWallet) {
             // The user is trying to deposit more coins than they are allowed to today.
-            // Show them an error
+            // Show them an error dialog
             alert {
                 title = "Your banking is out of control!"
-                message = "It looks like you're trying to deposit ${sourceUpdate.size} coins " +
-                        "from your wallet, however you can only deposit " +
-                        "${25 - previouslyDepositedAmount} due " +
-                        "to the maximum of 25 deposited coins from the wallet per day."
+                message = ("It looks like you're trying to deposit ${sourceUpdate.size} coins "
+                        + "from your wallet, however you can only deposit "
+                        + "${25 - previouslyDepositedAmount} due "
+                        + "to the maximum of 25 deposited coins from the wallet per day.")
+
                 positiveButton("Got it!"){
                     this@BankActivity.enableFurtherDeposits()
                 }
@@ -353,7 +356,8 @@ class BankActivity : AppCompatActivity() {
         if (!sourceUpdate.isEmpty() && depositAmount > 0) {
             when {
                 source == null -> {
-                    Log.e(tag, "[depositSelectedCoins] Want to update source but ref to it is null")
+                    Log.e(tag, "[depositSelectedCoins] Want to update source but ref to it "
+                            + "is null")
                     enableFurtherDeposits()
                 }
                 previouslyDepositedAmount == null -> {

@@ -30,19 +30,19 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
     private val tag = "MainActivity"
 
     // PermissionsManages to request permissions with if needed
-    private lateinit var permissionsManager : PermissionsManager
+    private lateinit var permissionsManager: PermissionsManager
 
     // Locally saved data tracking
-    internal var currentDate : String? = null // FORMAT YYYY-MM-DD
-    private var lastDownloadDate : String? = null
-    internal var cachedMap : String? = null
+    internal var currentDate: String? = null // FORMAT YYYY-MM-DD
+    private var lastDownloadDate: String? = null
+    internal var cachedMap: String? = null
     internal var ancientCoins = ArrayList<Feature>()
 
     // Firebase Firestore database references
-    private var firestore :  FirebaseFirestore? = null
-    internal var firestoreWallet : DocumentReference? = null
+    private var firestore:  FirebaseFirestore? = null
+    internal var firestoreWallet: DocumentReference? = null
     internal var firestoreInbox: DocumentReference? = null
-    internal var currentUserEmail : String? = null
+    internal var currentUserEmail: String? = null
 
     // The three main fragments which the app operates with
     private var mapFragment: MapFragment = MapFragment()
