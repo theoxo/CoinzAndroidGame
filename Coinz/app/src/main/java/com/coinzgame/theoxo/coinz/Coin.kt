@@ -10,11 +10,7 @@ import org.json.JSONObject
  * @param currency the currency of the coin.
  * @param value the coin's specified value.
  */
-class Coin (
-        @VisibleForTesting (otherwise = VisibleForTesting.PACKAGE_PRIVATE) val id: String,
-        @VisibleForTesting (otherwise = VisibleForTesting.PACKAGE_PRIVATE) val currency: String,
-        @VisibleForTesting (otherwise = VisibleForTesting.PACKAGE_PRIVATE) val value: Double)
-{
+class Coin (internal val id: String, internal val currency: String, internal val value: Double) {
 
     /**
      * Turns the coin into a [JSONObject].
