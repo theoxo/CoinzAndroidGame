@@ -261,22 +261,33 @@ class BankActivity : AppCompatActivity() {
      */
     private fun depositSelectedCoins() {
 
-        bankProgressBar.visibility = View.VISIBLE
+        // Display the progress bar to let the user know that we are waiting for a database
+        // access
+        bankProgressBar?.visibility = View.VISIBLE
+
+        // Get copies of the fields for thread safety
         val sourceModeIsWallet = choiceIsWallet
         val previouslyDepositedAmount = coinsDepositedToday
         val previousCredit = goldInBank
 
+        // Set up the source of the coins depending on the user's choice so we know
+        // which document to update
         val source: DocumentReference? = when (sourceModeIsWallet) {
             true -> firestoreWallet
             else -> firestoreInbox
         }
 
         // First of all disable the deposit button until we're done depositing
-        depositButton.isEnabled = false
+        depositButton?.isEnabled = false
 
+        // Variables to set
         var depositAmount = 0.0
         val sourceUpdate = HashMap<String, String>()
+
+        // Get the coins selected by the user
         val ticks: SparseBooleanArray = coinsListView.checkedItemPositions
+
+        // Loop over the coins and extract their details
         val listLength = coinsListView.count
         for (i in 0 until listLength) {
             if (ticks[i]) {
@@ -306,11 +317,19 @@ class BankActivity : AppCompatActivity() {
                                          + "$currency is null")
                     }
                     else -> {
+
+                        // All properties extracted are non-null.
+                        // Update the amount of gold the user is depositing
                         depositAmount += value * exchangeRate
+
+                        // Add the coin to the update map accordingly to whether it is from
+                        // the wallet or the inbox
                         if (sourceModeIsWallet) {
+                            // The coin came from the wallet, just mark it as deposited
                             sourceUpdate["`$currency|$id`"] = COIN_DEPOSITED
                         } else {
-                            // Otherwise it is the inbox whose contents we want to update
+                            // Otherwise it came from the inbox; update the message it was
+                            // attached to by removing this coin.
                             val message = coinToMessage?.get(coin)
                             if (message == null) {
                                 Log.e(tag, "[depositSelectedCoins] Couldn't find message for "
@@ -349,10 +368,7 @@ class BankActivity : AppCompatActivity() {
             return
         }
 
-
-        // Update the deposited coin's values in the database to a special value
-        // to indicate that they have been deposited (do not delete them to ensure they
-        // are not added back to the map again). Also adds the gold received to the user's bank
+        // Update the source if needed
         if (!sourceUpdate.isEmpty() && depositAmount > 0) {
             when {
                 source == null -> {
@@ -374,10 +390,10 @@ class BankActivity : AppCompatActivity() {
                     val newBankCredit = depositAmount + previousCredit
                     val newDepositedCounter = if (sourceModeIsWallet) {
                         // If the user is depositing from the wallet we want to update the counter.
-                        // If not, pass setUsersBankStatus null to skip it
                         previouslyDepositedAmount + sourceUpdate.size
+                        // If not, pass the update to the value it was already at
                     } else {
-                        null
+                        previouslyDepositedAmount
                     }
 
                     setUsersBankStatus(newBankCredit, newDepositedCounter)
@@ -391,7 +407,7 @@ class BankActivity : AppCompatActivity() {
     }
 
     /**
-     * Updates the source of the coin (whether inbox or wallet) so as to remove the deposited coins.
+     * Updates the target source (whether inbox or wallet) so as to remove the deposited coins.
      *
      * @param source the document reference for the source the coin was retrieved from.
      * @param sourceUpdate a map with the data to set in the source.
@@ -419,23 +435,19 @@ class BankActivity : AppCompatActivity() {
      * Sets the user's bank credit and updates the counter for today's deposited wallet coins.
      *
      * @param credit the amount of GOLD to set the user's credit to.
-     * @param numberOfDeposited the number of deposited coins
+     * @param numberOfDepositedFromWallet the number of coins deposited from the wallet today
      */
-    private fun setUsersBankStatus(credit: Double, numberOfDeposited: Long?) {
-        // Overwrites whatever credit is currently stored in the bank. Make sure this is
-        // only called through addToUsersBank
+    private fun setUsersBankStatus(credit: Double, numberOfDepositedFromWallet: Long) {
 
         val currentDate = todaysDate  // copy field for thread safety
 
         if (currentDate == null) {
             Log.e(tag, "[setUsersBankStatus] currentDate is null, aborting")
         } else {
-            val updateMap = if (numberOfDeposited == null) {
-                mapOf(GOLD_FIELD_TAG to credit)
-            } else {
-                mapOf(GOLD_FIELD_TAG to credit, currentDate to numberOfDeposited)
-            }
+            val updateMap = mapOf(
+                    GOLD_FIELD_TAG to credit, currentDate to numberOfDepositedFromWallet)
 
+            // Set the bank data as desired
             firestoreBank?.set(updateMap)?.run {
                 addOnSuccessListener { _ ->
                     Log.d(tag, "[setUsersBankStatus] Succeeded.")
@@ -452,12 +464,12 @@ class BankActivity : AppCompatActivity() {
     }
 
     /**
-     * Invokes [pullFromDatabase] and re-enables the [depositButton] once the source is updated.
+     * If both updates are done invokes [pullFromDatabase] and re-enables the [depositButton].
      */
     private fun enableFurtherDeposits() {
         if (creditUpdateDone && sourceUpdateDone) {
             // If both credit update and wallet update succeeded, enable further
-            // depositing redo the list view
+            // depositing and refill the listview
             pullFromDatabase()
             depositButton?.isEnabled = true
             bankProgressBar?.visibility = View.GONE
