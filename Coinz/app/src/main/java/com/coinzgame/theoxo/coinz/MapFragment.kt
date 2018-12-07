@@ -62,7 +62,7 @@ class MapFragment :
     private var mapboxMap: MapboxMap? = null
     private val bankLocation: LatLng = LatLng(BANK_MARKER_LATITUDE, BANK_MARKER_LONGITUDE)
 
-    // Keep track of data related to the coins
+    // Keep track of which coin corresponds to which marker
     @VisibleForTesting (otherwise = VisibleForTesting.PRIVATE)
     lateinit var markerIdToCoin: MutableMap<Long, Coin>
 
@@ -74,15 +74,25 @@ class MapFragment :
     private var comboTimer: CountDownTimer? = null
     private var comboTimeRemaining: Long? = null
     private var comboFactor: Double? = null
+
+    // Keep track of which MainActivity this Fragment is attached to
     private var mainActivity: MainActivity? = null
 
+    // Keep track of which mode the user is currently in (inspecting vs. picking up coins
+    // on click)
     private var modeIsPickup: Boolean = false
 
+    /**
+     * Save the MainActivity which invoked this Fragment.
+     */
     override fun onAttach(context: Context?) {
         super.onAttach(context)
         mainActivity = context as? MainActivity
     }
 
+    /**
+     * Inflate the layout corresponding to this fragment.
+     */
     override fun onCreateView(
             inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
 
@@ -91,6 +101,9 @@ class MapFragment :
 
     }
 
+    /**
+     * Sets up the local fields and button click events. Starts loading the MapView.
+     */
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -103,7 +116,6 @@ class MapFragment :
         markerIdToCoin = HashMap()
 
         mapView?.getMapAsync(this)
-
     }
 
     /**
@@ -255,7 +267,7 @@ class MapFragment :
                                     val valueDouble: Double = try {
                                         value.toDouble()
                                     } catch (e: NumberFormatException) {
-                                        Log.d(fragTag, "[addMarkers] Casting value to double "
+                                        Log.w(fragTag, "[addMarkers] Casting value to double "
                                                 + "failed. Setting it to -1.0")
                                         // Setting the value to be negative will cause the icon
                                         // to be null, meaning the marker will not be added.
@@ -284,8 +296,8 @@ class MapFragment :
                                     if (addedMarker != null) {
                                         // Add marker ID -> Coin so we can recognize which
                                         // coin is being collected later
-                                        markerIdToCoin[addedMarker.id] = Coin(id, currency,
-                                                valueDouble)
+                                        markerIdToCoin[addedMarker.id] = Coin(
+                                                id, currency, valueDouble)
                                     } else {
                                         Log.e(fragTag, "[addMarkers] Failed to add marker")
                                     }
@@ -671,13 +683,13 @@ class MapFragment :
         return object : CountDownTimer(millisInFuture, 1000) {
             override fun onTick(millisRemaining: Long) {
                 val timerText: String = String.format("%.0f", millisRemaining / 1000.0)
-                comboTimerText.text = timerText
+                comboTimerText?.text = timerText
                 comboTimeRemaining = millisRemaining
             }
 
             override fun onFinish() {
-                comboTimerText.text = "No combo active"
-                comboFactorText.text = "No combo active"
+                comboTimerText?.text = "No combo active"
+                comboFactorText?.text = "No combo active"
                 comboTimeRemaining = null
                 comboTimer = null
                 comboFactor = null
