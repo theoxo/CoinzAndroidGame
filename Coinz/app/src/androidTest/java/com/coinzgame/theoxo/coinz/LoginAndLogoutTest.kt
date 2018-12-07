@@ -36,8 +36,8 @@ class LoginAndLogoutTest {
 
     /**
      * Tests logging in and back out again.
-     * For this test to run as expected a user with email "mikey@mikeysemail.mikey" and
-     * password "mikeymikey111" needs to be registered.
+     * For this test to run as expected a user with email "testcoincollector@test.test" and
+     * password "testtest111" needs to be registered.
      * It also requires a fresh install of the app, so before running the test make sure
      * the app is not already installed on the device. Running this test inside of a test suite
      * will therefore not work.
@@ -52,12 +52,12 @@ class LoginAndLogoutTest {
         val appCompatAutoCompleteTextView = onView(
                 allOf(withId(R.id.email),
                         isDisplayed()))
-        appCompatAutoCompleteTextView.perform(replaceText("mikey@mikeysemail.mikey"), closeSoftKeyboard())
+        appCompatAutoCompleteTextView.perform(replaceText("testcoincollector@test.test"), closeSoftKeyboard())
 
         val appCompatEditText = onView(
                 allOf(withId(R.id.password),
                         isDisplayed()))
-        appCompatEditText.perform(replaceText("mikeymikey111"), closeSoftKeyboard())
+        appCompatEditText.perform(replaceText("testtest111"), closeSoftKeyboard())
 
         val appCompatButton = onView(
                 allOf(withId(R.id.email_sign_in_button), withText("Sign in"),

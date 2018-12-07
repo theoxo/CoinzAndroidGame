@@ -24,12 +24,12 @@ class MessageCreationActivity : AppCompatActivity() {
 
     private val tag = "MessageCreationActivity"
 
-    private var currentUserEmail : String? = null
+    private var currentUserEmail: String? = null
 
     // Firebase Firestore database
-    private var firestore :  FirebaseFirestore? = null
-    private var firestoreWallet : DocumentReference? = null
-    private var firestoreBank : DocumentReference? = null
+    private var firestore:  FirebaseFirestore? = null
+    private var firestoreWallet: DocumentReference? = null
+    private var firestoreBank: DocumentReference? = null
     private var todaysDate: String? = null
 
     /**
@@ -88,7 +88,7 @@ class MessageCreationActivity : AppCompatActivity() {
                 .build()
         firestore?.firestoreSettings = settings
 
-        val emailTag : String? = currentUserEmail
+        val emailTag: String? = currentUserEmail
         if (emailTag == null) {
             Log.e(tag, "[onCreate] null user email")
         } else {
@@ -114,7 +114,7 @@ class MessageCreationActivity : AppCompatActivity() {
         messageSentProgressBar.visibility = View.VISIBLE
         sendButton.isEnabled = false
 
-        val targetEmail : String = targetEmail.text.toString()
+        val targetEmail: String = targetEmail.text.toString()
         val currentTime = Calendar.getInstance().apply {
             timeInMillis = System.currentTimeMillis()
         }
@@ -143,7 +143,8 @@ class MessageCreationActivity : AppCompatActivity() {
                     val id: String? = coin?.id
                     when {
                         coin == null -> {
-                            Log.e(tag, "[generateMessage] Could not cast item at pos $i to coin")
+                            Log.e(tag, "[generateMessage] Could not cast item at pos $i to "
+                                    + "coin")
                         }
                         currency == null -> {
                             Log.e(tag, "[generateMessage] Coin at $i has null currency")
@@ -155,7 +156,8 @@ class MessageCreationActivity : AppCompatActivity() {
                             Log.e(tag, "[generateMessage] Null id for coin at $i")
                         }
                         else -> {
-                            Log.d(tag, "[generateMessage] Adding $value $currency to the email")
+                            Log.d(tag, "[generateMessage] Adding $value $currency to the "
+                                    +"email")
                             val coinJSON = JSONObject()
                             coinJSON.put(CURRENCY, currency)
                             coinJSON.put(VALUE, value)
@@ -189,8 +191,10 @@ class MessageCreationActivity : AppCompatActivity() {
      * @param message the message to send to the target user.
      * @param sentCoinsDeletionMap a map of the coins to mark as invalid in the user's wallet.
      */
-    private fun sendMessage(targetEmail : String, message : Message,
-                            sentCoinsDeletionMap : Map<String, String>) {
+    private fun sendMessage(
+            targetEmail: String,
+            message: Message,
+            sentCoinsDeletionMap: Map<String, String>) {
 
         val messageTag = message.getMessageTag()
         val messageMap = mapOf(messageTag to message.toJSONString())
@@ -223,8 +227,8 @@ class MessageCreationActivity : AppCompatActivity() {
                                 addOnFailureListener { e ->
                                     messageSentProgressBar?.visibility = View.GONE
                                     sendButton?.isEnabled = true
-                                    Log.e(tag, "[sendMessage] Failed at adding mail to existent "
-                                            + "mailbox: $e")
+                                    Log.e(tag, "[sendMessage] Failed at adding mail to "
+                                            + "existent mailbox: $e")
                                 }
                             }
 
@@ -381,8 +385,8 @@ class MessageCreationActivity : AppCompatActivity() {
                         }
                     }
 
-                    val coinsAdapter = CoinAdapter(this@MessageCreationActivity, items,
-                                            true)
+                    val coinsAdapter = CoinAdapter(
+                            this@MessageCreationActivity, items, true)
                     coinsListView?.choiceMode = AbsListView.CHOICE_MODE_MULTIPLE
                     coinsListView?.adapter = coinsAdapter
                 }

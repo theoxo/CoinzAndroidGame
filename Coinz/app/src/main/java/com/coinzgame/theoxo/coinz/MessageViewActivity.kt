@@ -38,8 +38,8 @@ class MessageViewActivity : AppCompatActivity() {
             // list view which would be showing them.
         } else {
             // There is at least one coin attached, so get an adapter for the listview and set it
-            val attachedCoinsAdapter = CoinAdapter(this, attachedCoins,
-                    false)
+            val attachedCoinsAdapter = CoinAdapter(
+                    this, attachedCoins, false)
             messageAttachedCoinsListView.adapter = attachedCoinsAdapter
         }
     }

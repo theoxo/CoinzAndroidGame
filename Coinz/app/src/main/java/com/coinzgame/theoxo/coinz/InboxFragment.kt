@@ -36,7 +36,9 @@ class InboxFragment : Fragment() {
         mainActivity = context as? MainActivity
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(
+            inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+
         Log.d(fragTag, "Fragment created")
         return inflater.inflate(R.layout.fragment_inbox, container, false)
 
@@ -50,10 +52,10 @@ class InboxFragment : Fragment() {
 
         newMessageButton.setOnClickListener {_ -> startMessageCreationActivity() }
         inboxListView.setOnItemClickListener { _, _, position, _ ->
-            val message : Message? = inboxListView.getItemAtPosition(position) as? Message
+            val message: Message? = inboxListView.getItemAtPosition(position) as? Message
             if (message == null) {
-                Log.e(fragTag, "[inboxListView.onItemClick] Could not cast item at $position to "
-                        + "Message")
+                Log.e(fragTag, "[inboxListView.onItemClick] Could not cast item at $position "
+                        + "to Message")
             } else {
                 val intent = Intent(mainActivity, MessageViewActivity::class.java)
                 intent.putExtra(MESSAGE_JSON_STRING, message.toJSONString())

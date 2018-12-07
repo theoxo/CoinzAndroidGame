@@ -25,6 +25,7 @@ import org.hamcrest.Description
 import org.hamcrest.Matcher
 import org.hamcrest.Matchers.*
 import org.hamcrest.TypeSafeMatcher
+import org.json.JSONObject
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -190,6 +191,12 @@ class CollectCoinTest {
                         isDisplayed()))
         textView1.check(matches(withText("28")))
 
+        // Set the rates before starting the bank to make the test repeatable
+        mapFragment?.rates = JSONObject("{\"SHIL\": 51.28148957923587, "
+                + "\"DOLR\": 32.271807953909644, "
+                + "\"QUID\": 47.650279691530336, "
+                + "\"PENY\": 17.15222932298055}")
+
         // Start the BankActivity
         mapFragment?.startBank()
 
@@ -237,7 +244,7 @@ class CollectCoinTest {
         val textView2 = onView(
                 allOf(withId(R.id.upperTextView),
                         isDisplayed()))
-        textView2.check(matches(withText("Coins deposited from wallet today: 1.\nCurrent bank credit: 14.89 GOLD.")))
+        textView2.check(matches(withText("Coins deposited from wallet today: 1.\nCurrent bank credit: 16.14 GOLD.")))
     }
 
     private fun childAtPosition(

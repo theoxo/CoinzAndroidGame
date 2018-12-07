@@ -18,16 +18,16 @@ class MessageAdapter(context: Context, messages: ArrayList<Message>)
     : ArrayAdapter<Message>(context, 0, messages) {
 
     override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-        val message : Message? =  getItem(position)
 
-        val view : View = convertView ?:
+        val message: Message? =  getItem(position)
+        val view: View = convertView ?:
                           LayoutInflater.from(context).inflate(R.layout.standard_list_item,
                                   parent, false)
 
         val tvItem = view.findViewById<TextView>(R.id.standardListItemText)
 
         var messageText = "${message?.senderEmail}\n${message?.timestamp}"
-        val numAttachedCoins : Int? = message?.attachedCoins?.size
+        val numAttachedCoins: Int? = message?.attachedCoins?.size
         when (numAttachedCoins) {
             null -> {
                 // Skip
@@ -42,7 +42,7 @@ class MessageAdapter(context: Context, messages: ArrayList<Message>)
                 messageText += "\n$numAttachedCoins coins"
             }
         }
-        val messageBodyLength : Int? = message?.messageText?.length
+        val messageBodyLength: Int? = message?.messageText?.length
         when {
             messageBodyLength == null || messageBodyLength == 0 -> {
                 // Skip

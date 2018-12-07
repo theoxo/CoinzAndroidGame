@@ -1,5 +1,6 @@
 package com.coinzgame.theoxo.coinz
 
+import android.support.annotation.VisibleForTesting
 import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
@@ -18,9 +19,14 @@ class Message(messageJSON: JSONObject) {
 
     private val tag = "MessageClass"
 
+    // The fields held by the message
+    @VisibleForTesting (otherwise = VisibleForTesting.PACKAGE_PRIVATE)
     var timestamp: String? = null
+    @VisibleForTesting (otherwise = VisibleForTesting.PACKAGE_PRIVATE)
     var senderEmail: String? = null
+    @VisibleForTesting (otherwise = VisibleForTesting.PACKAGE_PRIVATE)
     var messageText: String? = null
+    @VisibleForTesting (otherwise = VisibleForTesting.PACKAGE_PRIVATE)
     var attachedCoins: ArrayList<Coin>? = null
 
 
@@ -35,9 +41,9 @@ class Message(messageJSON: JSONObject) {
         messageText = messageJSON.getString(MESSAGE_TEXT)
         val messageAttachments = JSONArray(messageJSON.getString(MESSAGE_ATTACHMENTS))
         for (i in 0 until messageAttachments.length()) {
-            val attachment : JSONObject? = messageAttachments[i] as? JSONObject
-            val currency : String? = attachment?.getString(CURRENCY)
-            val value : Double? = attachment?.getDouble(VALUE)
+            val attachment: JSONObject? = messageAttachments[i] as? JSONObject
+            val currency: String? = attachment?.getString(CURRENCY)
+            val value: Double? = attachment?.getDouble(VALUE)
             when {
                 currency == null -> Log.e(tag, "[constructor] currency is null at $i")
                 value == null -> Log.e(tag, "[constructor] value is null at $i")
@@ -63,7 +69,7 @@ class Message(messageJSON: JSONObject) {
      *
      * @return the tag generated.
      */
-    fun getMessageTag() : String {
+    fun getMessageTag(): String {
         // Generate the tag from the timestamp of the message and the user we retrieved it from
         // in a way that adheres to the firebase assumptions here:
         // https://firebase.google.com/docs/firestore/quotas
@@ -77,7 +83,7 @@ class Message(messageJSON: JSONObject) {
      *
      * @return a String representation of the JSON containing all the message's data.
      */
-    fun toJSONString() : String {
+    fun toJSONString(): String {
         val json = JSONObject()
         addSenderEmailToJSON(json)
         addTimestampToJSON(json)
@@ -93,7 +99,7 @@ class Message(messageJSON: JSONObject) {
      * @param coin the coin to remove.
      * @return whether the removal was successful.
      */
-    fun removeCoin(coin: Coin) : Boolean? {
+    fun removeCoin(coin: Coin): Boolean? {
         return attachedCoins?.remove(coin)
     }
 

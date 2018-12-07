@@ -38,9 +38,11 @@ class NewMessageAvailableTest {
      * Tests logging in, switching to the [InboxFragment] and checking if the new message button
      * is available.
      * The purpose of this test is really to make sure navigating to and loading the [InboxFragment]
-     * works as expected. It requires a fresh install of the app, so before running the test make sure
-     * the app is not already installed on the device. Running this test inside of a test suite
-     * will therefore not work.
+     * works as expected. It requires a fresh install of the app, so before running the test make
+     * sure the app is not already installed on the device. Running this test inside of a test
+     * suite will therefore not work.
+     * The test also requires a use with email "testcoincollector@test.test" and password
+     * "testtest111" to be set up in the authentication system.
      */
     @Test
     fun newMessageAvailableTest() {
@@ -57,10 +59,10 @@ class NewMessageAvailableTest {
                                         0),
                                 0),
                         isDisplayed()))
-        appCompatAutoCompleteTextView2.perform(replaceText("mikey@mikeysemail.mikey"))
+        appCompatAutoCompleteTextView2.perform(replaceText("testcoincollector@test.test"))
 
         val appCompatAutoCompleteTextView3 = onView(
-                allOf(withId(R.id.email), withText("mikey@mikeysemail.mikey"),
+                allOf(withId(R.id.email), withText("testcoincollector@test.test"),
                         childAtPosition(
                                 childAtPosition(
                                         withId(R.id.textInputLayout),
@@ -77,7 +79,7 @@ class NewMessageAvailableTest {
                                         0),
                                 0),
                         isDisplayed()))
-        appCompatEditText.perform(replaceText("mikeymikey111"), closeSoftKeyboard())
+        appCompatEditText.perform(replaceText("testtest111"), closeSoftKeyboard())
 
         val appCompatButton = onView(
                 allOf(withId(R.id.email_sign_in_button), withText("Sign in"),

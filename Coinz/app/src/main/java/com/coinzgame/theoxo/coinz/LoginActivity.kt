@@ -24,7 +24,7 @@ class LoginActivity : AppCompatActivity() {
 
     private val tag = "LoginActivity"
 
-    private var mAuth : FirebaseAuth? = null
+    private var mAuth: FirebaseAuth? = null
 
     private var emailEmpty: Boolean = true
     private var pwEmpty: Boolean = true
@@ -42,6 +42,8 @@ class LoginActivity : AppCompatActivity() {
         // Initialize authentication service
         mAuth = FirebaseAuth.getInstance()
 
+        // Add text listeners to enable and disable the buttons according to what the user
+        // has entered
         email.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
                 // Not interested
@@ -205,7 +207,7 @@ class LoginActivity : AppCompatActivity() {
      * @param email the email corresponding to the account.
      * @param password the password to log in to the account with.
      */
-    private fun signInUser(email : String, password : String) {
+    private fun signInUser(email: String, password: String) {
         progressBar.visibility = View.VISIBLE
         disableAllButtons()
         try {

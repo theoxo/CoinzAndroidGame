@@ -24,8 +24,11 @@ import java.util.*
  * Also stores references to the user's email and firestore documents
  * for easy access by the fragments.
  */
-class MainActivity : AppCompatActivity(), PermissionsListener,
-        BottomNavigationView.OnNavigationItemSelectedListener {
+class MainActivity :
+        AppCompatActivity(),
+        PermissionsListener,
+        BottomNavigationView.OnNavigationItemSelectedListener
+{
 
     private val tag = "MainActivity"
 
@@ -128,10 +131,10 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
         Log.d(tag, "[onStart] Fetched lastDownloadDate: $lastDownloadDate")
 
         // Need to get date in onStart() because app may have been left running overnight
-        val year : String = Calendar.getInstance().get(Calendar.YEAR).toString()
+        val year: String = Calendar.getInstance().get(Calendar.YEAR).toString()
         // Add one to the month as it is 0-indexed
-        var month : String = (Calendar.getInstance().get(Calendar.MONTH) + 1).toString()
-        var day : String = Calendar.getInstance().get(Calendar.DAY_OF_MONTH).toString()
+        var month: String = (Calendar.getInstance().get(Calendar.MONTH) + 1).toString()
+        var day: String = Calendar.getInstance().get(Calendar.DAY_OF_MONTH).toString()
         if (year != "2018" && year != "2019") {
             Log.e(tag, "Unsupported date")
         }
@@ -220,7 +223,7 @@ class MainActivity : AppCompatActivity(), PermissionsListener,
      * @param item the menu item clicked.
      * @return whether the click event was consumed.
      */
-    override fun onNavigationItemSelected(item : MenuItem): Boolean {
+    override fun onNavigationItemSelected(item: MenuItem): Boolean {
         Log.d(tag, "[onNavigationItemSelected] Clicked")
         when (item.itemId) {
             R.id.account_nav -> startFragment(accountFragment)

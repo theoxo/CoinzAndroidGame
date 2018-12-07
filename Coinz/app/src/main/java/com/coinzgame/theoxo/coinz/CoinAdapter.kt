@@ -15,14 +15,16 @@ import android.widget.TextView
  * @param coins the coins to put in the list.
  * @param listIsMultipleChoice whether the target list view is in multiple choice mode.
  */
-class CoinAdapter(context: Context, coins: ArrayList<Coin>,
-                  private var listIsMultipleChoice: Boolean)
-    : ArrayAdapter<Coin>(context, 0, coins) {
+class CoinAdapter(
+        context: Context,
+        coins: ArrayList<Coin>,
+        private var listIsMultipleChoice: Boolean
+) : ArrayAdapter<Coin>(context, 0, coins) {
 
     override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-        val coin : Coin? =  getItem(position)
 
-        val view : View = when {
+        val coin: Coin? =  getItem(position)
+        val view: View = when {
             convertView != null -> {
                 // If the view is already given, simply use it
                convertView

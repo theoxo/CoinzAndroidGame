@@ -1,5 +1,6 @@
 package com.coinzgame.theoxo.coinz
 
+import android.support.annotation.VisibleForTesting
 import org.json.JSONObject
 
 /**
@@ -9,14 +10,18 @@ import org.json.JSONObject
  * @param currency the currency of the coin.
  * @param value the coin's specified value.
  */
-class Coin (val id: String, val currency: String, val value: Double) {
+class Coin (
+        @VisibleForTesting (otherwise = VisibleForTesting.PACKAGE_PRIVATE) val id: String,
+        @VisibleForTesting (otherwise = VisibleForTesting.PACKAGE_PRIVATE) val currency: String,
+        @VisibleForTesting (otherwise = VisibleForTesting.PACKAGE_PRIVATE) val value: Double)
+{
 
     /**
      * Turns the coin into a [JSONObject].
      *
      * @return the JSON holding the coin's fields.
      */
-    fun toJSON() : JSONObject {
+    fun toJSON(): JSONObject {
         val coinJSON = JSONObject()
         coinJSON.put(CURRENCY, currency)
         coinJSON.put(ID, id)

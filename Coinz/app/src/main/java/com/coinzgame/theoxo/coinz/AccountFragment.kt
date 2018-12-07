@@ -33,7 +33,8 @@ class AccountFragment : Fragment() {
         mainActivity = context as? MainActivity
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(
+            inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         Log.d(fragTag, "[onCreateView] Inflating view")
         return inflater.inflate(R.layout.fragment_account, container, false)
     }

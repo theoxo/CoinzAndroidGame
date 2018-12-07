@@ -43,8 +43,12 @@ import kotlin.collections.HashMap
  * Handles various aspects of loading and displaying the map,
  * tracking the user's location, marking the coins on the map and picking them up.
  */
-class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
-        DownloadCompleteListener {
+class MapFragment :
+        Fragment(),
+        OnMapReadyCallback,
+        LocationEngineListener,
+        DownloadCompleteListener
+{
 
     private val fragTag = "MapFragment"
 
@@ -81,6 +85,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
 
     override fun onCreateView(
             inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+
         Log.d(fragTag, "Fragment created")
         return inflater.inflate(R.layout.fragment_map, container, false)
 
@@ -191,7 +196,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
             return
         }
 
-        val features : MutableList<Feature>? = FeatureCollection.fromJson(geoJsonString).features()
+        val features: MutableList<Feature>? = FeatureCollection.fromJson(geoJsonString).features()
         // Also add any and all currently active ancient coins
         features?.addAll(mainActivityCp.ancientCoins)
 
@@ -259,7 +264,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
 
                                     val roundedValueString = String.format("%.2f", valueDouble)
 
-                                    val icon : Icon? = coinIconFactory.getIconForCoin(id, currency,
+                                    val icon: Icon? = coinIconFactory.getIconForCoin(id, currency,
                                             valueDouble)
 
                                     val addedMarker: Marker? = if (icon != null) {
@@ -409,7 +414,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
      *
      * @param[location] the new location to focus the camera on.
      */
-    private fun setCameraPosition(location : Location) {
+    private fun setCameraPosition(location: Location) {
         mapboxMap?.animateCamera(CameraUpdateFactory.newLatLng(
                 LatLng(location.latitude, location.longitude)))
     }
@@ -597,7 +602,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
      * @param marker the marker which was clicked
      * @return whether to consume the click event or not
      */
-    private fun onMarkerClick(marker: Marker) : Boolean {
+    private fun onMarkerClick(marker: Marker): Boolean {
         val userLocation = originLocation // copy for thread safety
         val markerLatLng = marker.position
         if (userLocation == null) {
@@ -659,7 +664,7 @@ class MapFragment : Fragment(), OnMapReadyCallback, LocationEngineListener,
      * @param millisInFuture the millisecond to count down to
      * @return the set up combo timer
      */
-    private fun getComboTimerInstance(millisInFuture: Long) : CountDownTimer {
+    private fun getComboTimerInstance(millisInFuture: Long): CountDownTimer {
 
         comboTimeRemaining = millisInFuture
 

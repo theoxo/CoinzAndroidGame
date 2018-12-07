@@ -52,7 +52,7 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
                         + "successfully downloaded.")
             if (thisContext != null) {
                 // Let the user know that the download failed.
-                displayNotificationWithTitleAndText(title, text, COINZ_DOWNLOAD_NOTIFICATION_ID)
+                displayNotification(title, text, COINZ_DOWNLOAD_NOTIFICATION_ID)
             }
         } else {
             // We have successfully downloaded today's map. Update this in the local storage.
@@ -68,7 +68,7 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
                 // We should also notify the user that the download was completed in the background.
                 val title = "Coinz Background Download"
                 val text = "Today's map has been downloaded onto your device."
-                displayNotificationWithTitleAndText(title, text, COINZ_DOWNLOAD_NOTIFICATION_ID)
+                displayNotification(title, text, COINZ_DOWNLOAD_NOTIFICATION_ID)
 
             } else {
                 Log.w(tag, "[downloadComplete] context or date is null. Map will have to be "
@@ -132,10 +132,10 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
      */
     private fun handleSpawnAlarm(context: Context) {
         // Get current date
-        val year : String = Calendar.getInstance().get(Calendar.YEAR).toString()
+        val year: String = Calendar.getInstance().get(Calendar.YEAR).toString()
         // Add one to the month as it is 0-indexed
-        var month : String = (Calendar.getInstance().get(Calendar.MONTH) + 1).toString()
-        var day : String = Calendar.getInstance().get(Calendar.DAY_OF_MONTH).toString()
+        var month: String = (Calendar.getInstance().get(Calendar.MONTH) + 1).toString()
+        var day: String = Calendar.getInstance().get(Calendar.DAY_OF_MONTH).toString()
         if (year != "2018" && year != "2019") {
             Log.e(tag, "Unsupported date")
         }
@@ -178,8 +178,9 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
      * @param dolr the ancient coin of the DOLR currency, or null
      * @param peny the ancient coin of the PENY currency, or null
      */
-    private fun saveAncientCoins(shil: JSONObject?, quid: JSONObject?, dolr: JSONObject?,
-                                 peny: JSONObject?) {
+    private fun saveAncientCoins(
+            shil: JSONObject?, quid: JSONObject?, dolr: JSONObject?, peny: JSONObject?) {
+
         val preferenceContext = context
         if (preferenceContext == null) {
             // If the context is null we won't be able to store the ancient coins we've spawned.
@@ -281,7 +282,7 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
             val currentSystemTime = System.currentTimeMillis()
 
             // Set up the calendar for the first intent
-            val alarmCalendar : Calendar = Calendar.getInstance().apply {
+            val alarmCalendar: Calendar = Calendar.getInstance().apply {
                 timeInMillis = currentSystemTime
                 set(Calendar.HOUR_OF_DAY, hour)
                 set(Calendar.MINUTE, 0)
@@ -310,7 +311,7 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
             )
 
             // Set up the calendar for the second alarm at 30 minutes past the hour
-            val alarmCalendarHalf : Calendar = Calendar.getInstance().apply {
+            val alarmCalendarHalf: Calendar = Calendar.getInstance().apply {
                 timeInMillis = currentSystemTime
                 set(Calendar.HOUR_OF_DAY, hour)
                 set(Calendar.MINUTE, 30)
@@ -437,7 +438,7 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
      * @param geoJsonString the GeoJSON String with today's coins.
      * @return Each currency's top value, in the order SHIL, QUID, DOLR, PENY.
      */
-    private fun getTopCoinValues(geoJsonString: String) : Array<Double> {
+    private fun getTopCoinValues(geoJsonString: String): Array<Double> {
         var topSHIL = 0.0
         var topQUID = 0.0
         var topDOLR = 0.0
@@ -491,10 +492,10 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
      * @param currency the currency of the ancient coin to be generated.
      * @return the JSON specifying the ancient coin if it was spawned, or null otherwise.
      */
-    private fun generateAncientCoin(topCoinValue: Double, currency: String) : JSONObject? {
+    private fun generateAncientCoin(topCoinValue: Double, currency: String): JSONObject? {
 
         // The json to return. Note this will remain null unless the coin flip is successful
-        var json : JSONObject? = null
+        var json: JSONObject? = null
 
         val p = ThreadLocalRandom.current().nextDouble(0.0, 1.0)
         if (p < ANCIENT_COIN_SPAWN_CHANCE) {
@@ -533,7 +534,7 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
 
     /**
      * Builds an appropriate notification for the spawned ancient coins.
-     * Then invokes [displayNotificationWithTitleAndText] to show the notification to the user.
+     * Then invokes [displayNotification] to show the notification to the user.
      *
      * @param coins a list of the ancient coins which were just spawned.
      */
@@ -548,7 +549,7 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
         }
 
         // Create an appropriate title
-        val notificationTitle : String = when (coins.size) {
+        val notificationTitle: String = when (coins.size) {
             1 -> "An Ancient Coin Just Spawned!"
             else -> "${coins.size} Ancient Coins Just Spawned!"
         }
@@ -563,8 +564,8 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
         }
 
         // Attempt to fire off the notification
-        displayNotificationWithTitleAndText(
-                notificationTitle, notificationBody,COINZ_SPAWN_NOTIFICATION)
+        displayNotification(
+                notificationTitle, notificationBody,COINZ_SPAWN_NOTIFICATION_ID)
 
     }
 
@@ -575,16 +576,14 @@ class AncientCoinSpawner : BroadcastReceiver(), DownloadCompleteListener {
      * @param text the desired text for the notification.
      * @param id the id of the notification to display
      */
-    private fun displayNotificationWithTitleAndText(title : String,
-                                                    text : String,
-                                                    id: Int) {
+    private fun displayNotification(title: String, text: String, id: Int) {
 
-        Log.d(tag, "[displayNotificationWithTitleAndText] Invoked")
+        Log.d(tag, "[displayNotification] Invoked")
         val notificationContext = context
 
         if (notificationContext == null) {
             // Won't be able to set up the notification. Return early
-            Log.e(tag, "[displayNotificationWithTitleAndText] Context is null, returning.")
+            Log.e(tag, "[displayNotification] Context is null, returning.")
             return
         }
 

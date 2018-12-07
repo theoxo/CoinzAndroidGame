@@ -25,23 +25,23 @@ class BankActivity : AppCompatActivity() {
     private val tag = "BankActivity"
 
     // Firebase Firestore database
-    private var firestore : FirebaseFirestore? = null
-    private var firestoreWallet : DocumentReference? = null
-    private var firestoreBank : DocumentReference? = null
-    private var firestoreInbox : DocumentReference? = null
-    private var currentUserEmail : String? = null
+    private var firestore: FirebaseFirestore? = null
+    private var firestoreWallet: DocumentReference? = null
+    private var firestoreBank: DocumentReference? = null
+    private var firestoreInbox: DocumentReference? = null
+    private var currentUserEmail: String? = null
 
-    private var rates : JSONObject? = null
+    private var rates: JSONObject? = null
     private var todaysDate: String? = null
     private var goldInBank: Double? = null
     private var coinsDepositedToday: Long? = null
 
-    private var sourceUpdateDone : Boolean = true
-    private var creditUpdateDone : Boolean = true
+    private var sourceUpdateDone: Boolean = true
+    private var creditUpdateDone: Boolean = true
 
-    private var choiceIsWallet : Boolean = true
+    private var choiceIsWallet: Boolean = true
 
-    private var coinToMessage : MutableMap<Coin, Message>? = null
+    private var coinToMessage: MutableMap<Coin, Message>? = null
 
     /**
      * Sets up the local fields and invokes [pullFromDatabase].
@@ -84,7 +84,7 @@ class BankActivity : AppCompatActivity() {
             switchToDepositMode()
         }
 
-        val emailTag : String? = currentUserEmail
+        val emailTag: String? = currentUserEmail
         if (emailTag == null) {
             Log.e(tag, "[onCreate] null user email")
         } else {
@@ -266,7 +266,7 @@ class BankActivity : AppCompatActivity() {
         val previouslyDepositedAmount = coinsDepositedToday
         val previousCredit = goldInBank
 
-        val source : DocumentReference? = when (sourceModeIsWallet) {
+        val source: DocumentReference? = when (sourceModeIsWallet) {
             true -> firestoreWallet
             else -> firestoreInbox
         }
@@ -276,16 +276,16 @@ class BankActivity : AppCompatActivity() {
 
         var depositAmount = 0.0
         val sourceUpdate = HashMap<String, String>()
-        val ticks : SparseBooleanArray = coinsListView.checkedItemPositions
+        val ticks: SparseBooleanArray = coinsListView.checkedItemPositions
         val listLength = coinsListView.count
         for (i in 0 until listLength) {
             if (ticks[i]) {
                 // The item at this position is ticked. Deposit it
-                val coin : Coin? = coinsListView.getItemAtPosition(i) as? Coin
-                val currency : String? = coin?.currency
-                val value : Double? = coin?.value
-                val id : String? = coin?.id
-                val exchangeRate : Double? = rates?.get(currency) as? Double
+                val coin: Coin? = coinsListView.getItemAtPosition(i) as? Coin
+                val currency: String? = coin?.currency
+                val value: Double? = coin?.value
+                val id: String? = coin?.id
+                val exchangeRate: Double? = rates?.get(currency) as? Double
 
                 when {
                     coin == null -> {
@@ -396,8 +396,9 @@ class BankActivity : AppCompatActivity() {
      * @param source the document reference for the source the coin was retrieved from.
      * @param sourceUpdate a map with the data to set in the source.
      */
-    private fun updateSourceWithDepositedCoins(source: DocumentReference,
-                                               sourceUpdate: Map<String, Any>) {
+    private fun updateSourceWithDepositedCoins(
+            source: DocumentReference, sourceUpdate: Map<String, Any>) {
+
         source.update(sourceUpdate).run {
             addOnSuccessListener { _ ->
                 Log.d(tag, "[updateSourceWithDepositedCoins] Success with "

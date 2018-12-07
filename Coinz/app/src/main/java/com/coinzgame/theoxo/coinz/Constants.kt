@@ -31,13 +31,13 @@ const val ANCIENT_DOLR = "Ancient DOLR coin"
 const val ANCIENT_PENY = "Ancient PENY coin"
 const val ANCIENT_COIN_SPAWN_CHANCE = 0.03125
 
-// Alarm managing tags
+// Alarm managing tags, including notification tags
 const val ALARM_ACTION = "AncientCoinAlarmAction"
 const val OVERWRITE_ALARM_ACTION = "OverwriteAlarmAction"
 const val COINZ_CHANNEL_ID = "CoinzNotificationChannel"
 const val COINZ_CHANNEL_NAME = "Coinz Notifications"
 const val COINZ_DOWNLOAD_NOTIFICATION_ID = 1
-const val COINZ_SPAWN_NOTIFICATION = 2
+const val COINZ_SPAWN_NOTIFICATION_ID = 2
 
 
 // Local saved data file

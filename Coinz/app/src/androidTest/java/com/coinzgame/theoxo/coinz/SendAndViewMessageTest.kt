@@ -39,8 +39,8 @@ class SendAndViewMessageTest {
      * Tests logging in as one user, sending a message to another user, logging in as the second
      * user and viewing the message. Thereby tests the message passing system in completion.
      * For this test to run as expected two users need to be registered:
-     * one with email "mikey@mikeysemail.mikey" and password "mikeymikey111",
-     * and one with email "lucy@lucysemail.lucy" and password "lucylucy111".
+     * one with email "testcoincollector@test.test" and password "testtest111",
+     * and one with email "testreceiver@test.test" and password "testtest111".
      * It also requires a fresh install of the app, so before running the test make sure
      * the app is not already installed on the device. Running this test inside of a test suite
      * will therefore not work.
@@ -56,12 +56,12 @@ class SendAndViewMessageTest {
         val appCompatAutoCompleteTextView = onView(
                 allOf(withId(R.id.email),
                         isDisplayed()))
-        appCompatAutoCompleteTextView.perform(replaceText("mikey@mikeysemail.mikey"), closeSoftKeyboard())
+        appCompatAutoCompleteTextView.perform(replaceText("testcoincollector@test.test"), closeSoftKeyboard())
 
         val appCompatEditText = onView(
                 allOf(withId(R.id.password),
                         isDisplayed()))
-        appCompatEditText.perform(replaceText("mikeymikey111"), closeSoftKeyboard())
+        appCompatEditText.perform(replaceText("testtest111"), closeSoftKeyboard())
 
         val appCompatButton = onView(
                 allOf(withId(R.id.email_sign_in_button), withText("Sign in"),
@@ -74,12 +74,7 @@ class SendAndViewMessageTest {
         Thread.sleep(7000)
 
         val appCompatButton2 = onView(
-                allOf(withId(android.R.id.button1), withText("Got it!"),
-                        childAtPosition(
-                                childAtPosition(
-                                        withClassName(`is`("android.widget.ScrollView")),
-                                        0),
-                                3)))
+                allOf(withId(android.R.id.button1), withText("Got it!")))
         appCompatButton2.perform(scrollTo(), click())
 
         val bottomNavigationItemView = onView(
@@ -115,7 +110,7 @@ class SendAndViewMessageTest {
                                         0),
                                 0),
                         isDisplayed()))
-        appCompatEditText2.perform(replaceText("lucy@lucysemail.lucy"), closeSoftKeyboard())
+        appCompatEditText2.perform(replaceText("testreceiver@test.test"), closeSoftKeyboard())
 
         val randomDouble = ThreadLocalRandom.current().nextDouble()
         // Random double to include in the message
@@ -171,17 +166,17 @@ class SendAndViewMessageTest {
         Thread.sleep(7000)
 
         val appCompatAutoCompleteTextView2 = onView(
-                allOf(withId(R.id.email), withText("mikey@mikeysemail.mikey"),
+                allOf(withId(R.id.email), withText("testcoincollector@test.test"),
                         childAtPosition(
                                 childAtPosition(
                                         withId(R.id.textInputLayout),
                                         0),
                                 0),
                         isDisplayed()))
-        appCompatAutoCompleteTextView2.perform(replaceText("lucy@lucysemail.lucy"))
+        appCompatAutoCompleteTextView2.perform(replaceText("testreceiver@test.test"))
 
         val appCompatAutoCompleteTextView3 = onView(
-                allOf(withId(R.id.email), withText("lucy@lucysemail.lucy"),
+                allOf(withId(R.id.email), withText("testreceiver@test.test"),
                         childAtPosition(
                                 childAtPosition(
                                         withId(R.id.textInputLayout),
@@ -189,26 +184,6 @@ class SendAndViewMessageTest {
                                 0),
                         isDisplayed()))
         appCompatAutoCompleteTextView3.perform(closeSoftKeyboard())
-
-        val appCompatEditText4 = onView(
-                allOf(withId(R.id.password), withText("mikeymikey111"),
-                        childAtPosition(
-                                childAtPosition(
-                                        withId(R.id.textInputLayout2),
-                                        0),
-                                0),
-                        isDisplayed()))
-        appCompatEditText4.perform(replaceText("lucylucy111"))
-
-        val appCompatEditText5 = onView(
-                allOf(withId(R.id.password), withText("lucylucy111"),
-                        childAtPosition(
-                                childAtPosition(
-                                        withId(R.id.textInputLayout2),
-                                        0),
-                                0),
-                        isDisplayed()))
-        appCompatEditText5.perform(closeSoftKeyboard())
 
         val appCompatButton6 = onView(
                 allOf(withId(R.id.email_sign_in_button), withText("Sign in"),

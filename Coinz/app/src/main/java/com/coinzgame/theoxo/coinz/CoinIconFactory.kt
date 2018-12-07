@@ -21,7 +21,7 @@ class CoinIconFactory(private val iconFactory: IconFactory) {
      * @param value the coin's value.
      * @return the icon if appropriate, or null.
      */
-    fun getIconForCoin(id: String, currency: String, value: Double) : Icon? {
+    fun getIconForCoin(id: String, currency: String, value: Double): Icon? {
         return when {
             // Begin by checking if the coin is Ancient. If so,
             // the icon will be the same regardless of the coins value.
@@ -81,7 +81,7 @@ class CoinIconFactory(private val iconFactory: IconFactory) {
      * @param value the SHIL coin's value.
      * @return the icon generated if appropriate, or null.
      */
-    private fun getSHILIcon(value: Double) : Icon? {
+    private fun getSHILIcon(value: Double): Icon? {
         return when {
             value < 0 || value >= 10 -> {
                 Log.e(tag, "[getSHILIcon] Unexpected value, icon will be null")
@@ -111,7 +111,7 @@ class CoinIconFactory(private val iconFactory: IconFactory) {
      * @param value the DOLR coin's value.
      * @return the icon generated if appropriate, or null.
      */
-    private fun getDOLRIcon(value: Double) : Icon? {
+    private fun getDOLRIcon(value: Double): Icon? {
         return when {
             value < 0 || value >= 10 -> {
                 Log.e(tag, "[getDOLRIcon] Unexpected value, icon will be null")
@@ -141,7 +141,7 @@ class CoinIconFactory(private val iconFactory: IconFactory) {
      * @param value the QUID coin's value.
      * @return the icon generated if appropriate, or null.
      */
-    private fun getQUIDIcon(value: Double) : Icon? {
+    private fun getQUIDIcon(value: Double): Icon? {
         return when {
             value < 0 || value >= 10 -> {
                 Log.e(tag, "[getQUIDIcon] Unexpected value, icon will be null")
@@ -171,7 +171,7 @@ class CoinIconFactory(private val iconFactory: IconFactory) {
      * @param value the PENY coin's value.
      * @return the icon generated if appropriate, or null.
      */
-    private fun getPENYIcon(value: Double) : Icon? {
+    private fun getPENYIcon(value: Double): Icon? {
         return when {
             value < 0 || value >= 10 -> {
                 Log.e(tag, "[getPENYIcon] Unexpected value, icon will be null")
