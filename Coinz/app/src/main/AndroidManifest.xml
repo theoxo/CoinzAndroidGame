@@ -15,31 +15,39 @@
         android:roundIcon="@mipmap/coinz_logo_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+        <!-- The app's main activity, handling the three fragments (map, inbox, account) -->
         <activity
             android:name=".MainActivity"
             android:label="@string/app_name"
             android:theme="@style/AppTheme.NoActionBar" />
+        <!-- The activity first presented to the user upon app start up -->
         <activity
             android:name=".LoginActivity"
             android:label="@string/app_name"
             android:theme="@style/AppTheme.NoActionBar">
+            <!-- Make it the default activity launched first -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- The activity for the bank functionality -->
         <activity
             android:name=".BankActivity"
             android:label="Bank"
             android:theme="@style/AppTheme.Dialog" />
+        <!-- The activity in which the user can craft messages -->
         <activity
             android:name=".MessageCreationActivity"
             android:label="New message"
             android:theme="@style/AppTheme.Dialog" />
+        <!-- The activity which the user would use to inspect a message in their inbox further -->
         <activity android:name=".MessageViewActivity"
             android:theme="@style/AppTheme.Dialog"
             android:label="View message"/>
 
+        <!-- Add the BroadcastReceiver handling ancient coin spawns and define the intents to
+             which it will listen -->
         <receiver
             android:name=".AncientCoinSpawner">
             <intent-filter>
