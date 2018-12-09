@@ -2,7 +2,6 @@ package com.coinzgame.theoxo.coinz
 
 import android.content.*
 import android.location.Location
-import android.opengl.Visibility
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.support.annotation.VisibleForTesting
@@ -186,7 +185,7 @@ class MapFragment :
             mainActivity?.toast(NETWORK_ERROR)
             mainActivity?.finish()
         } else {
-            mainActivity?.cachedMap = result  // store the cachedMap so we can save it onStop
+            mainActivity?.storeDownloadedMap(result)
             addMarkers(result)
         }
     }

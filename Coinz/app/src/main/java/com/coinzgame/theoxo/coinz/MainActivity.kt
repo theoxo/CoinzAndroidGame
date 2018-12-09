@@ -191,30 +191,30 @@ class MainActivity :
     }
 
     /**
-     * Saves the user preferences if needed.
-     * The user preferences are stored on the device only if [lastDownloadDate] does not match
-     * [currentDate].
+     * Overwrites the Geo-JSON map saved on the user's system with the given one.
+     * Also overwrites the field indexed by [LAST_DOWNLOAD_DATE] with [currentDate] to
+     * make it clear that the map was downloaded on this date.
+     * Finally updates [cachedMap] appropriately.
      */
-    override fun onStop() {
-        super.onStop()
+    internal fun storeDownloadedMap(map: String) {
 
-        if (lastDownloadDate == currentDate) {
-            Log.d(tag, "[onStop] Not storing date or map")
-        } else {
-            // Store preferences
-            val settings: SharedPreferences = getSharedPreferences(PREFERENCES_FILE,
-                    Context.MODE_PRIVATE)
-            val editor: SharedPreferences.Editor = settings.edit()
+        // Update our own cached copy of the map to use throughout this run of the app
+        cachedMap = map
 
-            Log.d(tag, "[onStop] Storing lastDownloadDate as currentDate: $currentDate")
-            editor.putString(LAST_DOWNLOAD_DATE, currentDate)
+        // Stores the downloaded map on the user's system so that it does not have to
+        // be downloaded again today.
+        val settings: SharedPreferences = getSharedPreferences(PREFERENCES_FILE,
+                Context.MODE_PRIVATE)
+        val editor: SharedPreferences.Editor = settings.edit()
 
-            val sneakpeak: String? = cachedMap?.take(25)
-            Log.d(tag, "[onStop] Storing cachedMap: $sneakpeak...")
-            editor.putString(SAVED_MAP_JSON, cachedMap)
+        Log.d(tag, "[storeDownloadedMap] Storing lastDownloadDate as: $currentDate")
+        editor.putString(LAST_DOWNLOAD_DATE, currentDate)
 
-            editor.apply()
-        }
+        val sneakpeak: String? = map.take(25)
+        Log.d(tag, "[storeDownloadedMap] Storing cachedMap: $sneakpeak...")
+        editor.putString(SAVED_MAP_JSON, map)
+
+        editor.apply()
     }
 
     /**
