@@ -24,7 +24,7 @@ class CoinClassInstrumentedUnitTest {
     private val coinValue = ThreadLocalRandom.current().nextDouble()
 
     /**
-     * Set up the and get its corresponding [JSONObject].
+     * Set up the [Coin] and get its corresponding [JSONObject].
      */
     @Before
     fun setUpCoinJson() {

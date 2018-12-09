@@ -294,6 +294,11 @@ class SendAndReceiveCoinsTest {
                 allOf(withId(R.id.chooseInboxButton), withText("My Inbox")))
         appCompatButton10.perform(click())
 
+        // Added a sleep statement to match the app's execution delay.
+        // The recommended way to handle such scenarios is to use Espresso idling resources:
+        // https://google.github.io/android-testing-support-library/docs/espresso/idling-resource/index.html
+        Thread.sleep(7000)
+
         val appCompatCheckedTextView3 = onData(anything())
                 .inAdapterView(allOf(withId(R.id.coinsListView),
                         childAtPosition(
