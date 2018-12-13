@@ -1,6 +1,5 @@
 package com.coinzgame.theoxo.coinz
 
-import android.support.annotation.VisibleForTesting
 import org.json.JSONObject
 
 /**
