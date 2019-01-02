@@ -1,0 +1,25 @@
+The method onCreateView in MapFragment, InboxFragment, and AccountFragment was based on code available in "Fragments" [online], Android Developers. Available from: https://developer.android.com/guide/components/fragments [Accessed 30/11/2018].
+
+The method setUpAlarms in AncientCoinSpawner was based on code available in "Schedule repeating alarms" [online], Android Developers. Available from: https://developer.android.com/training/scheduling/alarms [Accessed 13/11/2018].
+
+The method displayNotification in AncientCoinSpawner was based on code taken from "Create a Notification" [online], Android Developers. Available from: https://developer.android.com/training/notify-user/build-notification [Accessed 13/11/2018].
+
+CoinAdapter, MessageAdapter and their uses in BankActivity, InboxFragment, MessageViewActivity and MessageCreationActivity were based on code supplied by StackOverflow users Rakhita and Gastón Saillén in response to a thread titled "Custom Adapter for List View" [online]. Available from: https://stackoverflow.com/questions/8166497/custom-adapter-for-list-view [Accessed 26/10/2018].
+
+Code used throughout LoginActivity, MapFragment, InboxFragment, MessageCreationActivity and BankActivity to access and modify data on the Firestore database was based on examples made available in "Get data with Cloud Firestore" [online], Google Firebase. Available from: https://firebase.google.com/docs/firestore/query-data/get-data [Accessed 23/10/2018].
+
+The methods startMessageCreationActivity (in InboxFragment), startBank (in MapFragment), logOutUser (in AccountFragment), and startMain (in LoginActivity) were all based on example code provided in "Start another activity" [online], Android Developers. Available from: https://developer.android.com/training/basics/firstapp/starting-activity [Accessed 19/10/2018].
+
+The method resetPassword in LoginActivity was based on examples made public in "Manage Users in Firebase" [online], Google Firebase. Available from: https://firebase.google.com/docs/auth/web/manage-users [Accessed 4/12/2018].
+
+The method startFragment in MainActivity was heavily based on code in "Fragments" [online], Android Developers. Available from: https://developer.android.com/guide/components/fragments [Accessed 30/11/2018].
+
+MapFragment's method getComboTimerInstance was modified from code provided by StackOverflow users Shankar Agarwal and Indrek Kõue in response to a thread titled "How to make a countdown timer in Android?" [online]. Available from: https://stackoverflow.com/questions/10032003/how-to-make-a-countdown-timer-in-android [Accessed 15/11/2018].
+
+The resource file navigation\_menu.xml was based on an example provided in "Android Working with Bottom Navigation" [online],  Chike Mgbemena. Available from: https://code.tutsplus.com/tutorials/how-to-code-a-bottom-navigation-bar-for-an-android-app--cms-30305 [Accessed 20/10/2018].
+
+The Apptheme.Dialog theme defined in the resource file styles.xml was based on code provided by StackOverflow user herbertD in response to a thread titled "Android Activity as a dialog" [online]. Available from: https://stackoverflow.com/questions/1979369/android-activity-as-a-dialog [Accessed 27/10/2018].
+
+The app's main logo and the icons used to display the coins and the bank on the map were created using Canva.com, in accordance with their Extended License which permits use of Canva designs that contain Stock Media for university projects. License available from: https://about.canva.com/license-agreements/extended/ [Accessed 7/12/2018].
+
+Finally I would like to extend my thanks to Lucy Treasure, School of Social and Political Science, for giving non-technical feedback on the game such as which elements of the gameplay or UI were not clear enough.
