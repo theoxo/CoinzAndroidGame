@@ -24,7 +24,7 @@ a constant MAPBOX_KEY containing a
 
 ## License
 
-This software is provided under the GNU GPL license; please see
+This software is provided under the MIT license; please see
 the LICENSE file.
 
 ## Coursework notice
